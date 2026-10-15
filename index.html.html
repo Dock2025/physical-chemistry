@@ -1,0 +1,1299 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>原电池电动势模拟器</title>
+  <style>
+    :root {
+      --paper: #f7faf8;
+      --panel: #ffffff;
+      --ink: #18231c;
+      --muted: #607067;
+      --line: #d9e5dd;
+      --soft: #eef6f1;
+      --green: #12a150;
+      --teal: #00a88a;
+      --blue: #2f7dd3;
+      --red: #d93b54;
+      --yellow: #f5d042;
+      --shadow: 0 18px 45px rgba(26, 46, 34, 0.10);
+      color-scheme: light;
+      font-family: "Inter", "Segoe UI", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: linear-gradient(180deg, #fbfdfb 0%, var(--paper) 52%, #eef7f0 100%);
+    }
+
+    button,
+    select,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 22px clamp(14px, 2vw, 28px) 28px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(26px, 3vw, 42px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      max-width: 780px;
+      line-height: 1.6;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: 0 8px 24px rgba(26, 46, 34, 0.07);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 7px rgba(18, 161, 80, 0.12);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(330px, 0.75fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .stage,
+    .controls,
+    .meter-panel,
+    .plot-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.86);
+      box-shadow: var(--shadow);
+    }
+
+    .stage {
+      overflow: hidden;
+    }
+
+    .stage-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(247, 250, 248, 0.82);
+    }
+
+    .stage-title {
+      font-weight: 800;
+    }
+
+    .flow-tag {
+      color: var(--muted);
+      font-size: 14px;
+      text-align: right;
+    }
+
+    .canvas-wrap {
+      padding: 10px 10px 4px;
+    }
+
+    #cellCanvas {
+      display: block;
+      width: 100%;
+      aspect-ratio: 900 / 520;
+      border-radius: 6px;
+      background: #fbfdfb;
+    }
+
+    .readout-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      border-top: 1px solid var(--line);
+      background: var(--line);
+    }
+
+    .readout {
+      padding: 14px 16px;
+      background: rgba(255, 255, 255, 0.94);
+    }
+
+    .readout span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
+
+    .readout strong {
+      font-size: clamp(20px, 2.4vw, 32px);
+      letter-spacing: 0;
+    }
+
+    .controls {
+      padding: 16px;
+    }
+
+    .controls h2,
+    .meter-panel h2,
+    .plot-panel h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    .field-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+    }
+
+    .field-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+    }
+
+    label {
+      font-weight: 750;
+    }
+
+    .hint,
+    .value {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 11px;
+      color: var(--ink);
+      background: #fff;
+      outline: none;
+    }
+
+    select:focus,
+    input[type="range"]:focus-visible,
+    button:focus-visible {
+      outline: 3px solid rgba(0, 168, 138, 0.24);
+      outline-offset: 2px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--teal);
+    }
+
+    .side-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--ink);
+      background: #fff;
+      cursor: pointer;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(0, 168, 138, 0.55);
+      background: #f9fffb;
+    }
+
+    .primary {
+      border-color: transparent;
+      color: #08160f;
+      background: linear-gradient(135deg, #bfee58, #7bd88f);
+      font-weight: 800;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .meter-panel,
+    .plot-panel {
+      padding: 16px;
+    }
+
+    .facts {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+    }
+
+    .fact {
+      display: grid;
+      grid-template-columns: 104px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .fact:last-child {
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+
+    .fact dt {
+      color: var(--muted);
+    }
+
+    .fact dd {
+      margin: 0;
+      font-weight: 760;
+      line-height: 1.45;
+    }
+
+    .equation {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #f8fbf9;
+      border: 1px solid var(--line);
+      color: #253129;
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .equation code {
+      font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 0.95em;
+    }
+
+    #curveCanvas {
+      display: block;
+      width: 100%;
+      aspect-ratio: 560 / 320;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdfb;
+    }
+
+    .plot-caption {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .legend i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        align-items: start;
+        flex-direction: column;
+      }
+
+      .status-pill {
+        white-space: normal;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .app {
+        padding-inline: 10px;
+      }
+
+      .stage-head,
+      .readout-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .stage-head {
+        display: grid;
+      }
+
+      .flow-tag {
+        text-align: left;
+      }
+
+      .readout-strip,
+      .side-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .fact {
+        grid-template-columns: 1fr;
+        gap: 3px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <h1>原电池电动势模拟器</h1>
+        <p class="subtitle">调节左右两侧电极材料和金属离子浓度，观察标准电极电势、浓度修正、电动势、电子流方向和盐桥离子迁移如何同步变化。</p>
+      </div>
+      <div class="status-pill" aria-live="polite">
+        <span class="status-dot"></span>
+        <span id="statusText">动画运行中</span>
+      </div>
+    </header>
+
+    <section class="layout" aria-label="原电池模拟器">
+      <div class="stack">
+        <section class="stage" aria-label="动画模拟区">
+          <div class="stage-head">
+            <div class="stage-title">电池动画</div>
+            <div class="flow-tag" id="flowTag">电子流正在计算...</div>
+          </div>
+          <div class="canvas-wrap">
+            <canvas id="cellCanvas" width="900" height="520"></canvas>
+          </div>
+          <div class="readout-strip">
+            <div class="readout">
+              <span>当前电动势 Ecell</span>
+              <strong id="emfValue">0.00 V</strong>
+            </div>
+            <div class="readout">
+              <span>左半电池还原电势</span>
+              <strong id="leftPotential">0.00 V</strong>
+            </div>
+            <div class="readout">
+              <span>右半电池还原电势</span>
+              <strong id="rightPotential">0.00 V</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="plot-panel" aria-label="浓度曲线">
+          <h2>浓度对电动势的影响</h2>
+          <canvas id="curveCanvas" width="560" height="320"></canvas>
+          <p class="plot-caption" id="plotCaption">曲线固定右侧浓度，扫描左侧离子浓度；圆点是当前设置。</p>
+          <div class="legend">
+            <span><i style="background:#00a88a"></i>电动势曲线</span>
+            <span><i style="background:#d93b54"></i>当前浓度</span>
+            <span><i style="background:#f5d042"></i>电子流强弱</span>
+          </div>
+        </section>
+      </div>
+
+      <aside class="stack">
+        <section class="controls" aria-label="实验参数">
+          <h2>实验参数</h2>
+          <div class="field-grid">
+            <div class="field">
+              <div class="field-top">
+                <label for="leftMetal">左侧电极</label>
+                <span class="hint" id="leftRole">待判断</span>
+              </div>
+              <select id="leftMetal"></select>
+              <div class="field-top">
+                <label for="leftConc" id="leftConcLabel">左侧离子浓度</label>
+                <span class="value" id="leftConcValue">1.0 M</span>
+              </div>
+              <input id="leftConc" type="range" min="-6" max="1" step="0.02" value="0" aria-label="左侧离子浓度指数">
+            </div>
+
+            <div class="field">
+              <div class="field-top">
+                <label for="rightMetal">右侧电极</label>
+                <span class="hint" id="rightRole">待判断</span>
+              </div>
+              <select id="rightMetal"></select>
+              <div class="field-top">
+                <label for="rightConc" id="rightConcLabel">右侧离子浓度</label>
+                <span class="value" id="rightConcValue">1.0 M</span>
+              </div>
+              <input id="rightConc" type="range" min="-6" max="1" step="0.02" value="0" aria-label="右侧离子浓度指数">
+            </div>
+          </div>
+
+          <div class="side-actions">
+            <button class="primary" id="swapBtn" type="button">交换左右电极</button>
+            <button id="resetBtn" type="button">重置 Zn-Cu</button>
+          </div>
+        </section>
+
+        <section class="meter-panel" aria-label="计算结果">
+          <h2>计算结果</h2>
+          <dl class="facts">
+            <div class="fact">
+              <dt>正极/阴极</dt>
+              <dd id="cathodeText">-</dd>
+            </div>
+            <div class="fact">
+              <dt>负极/阳极</dt>
+              <dd id="anodeText">-</dd>
+            </div>
+            <div class="fact">
+              <dt>标准电动势</dt>
+              <dd id="standardText">-</dd>
+            </div>
+            <div class="fact">
+              <dt>总反应</dt>
+              <dd id="reactionText">-</dd>
+            </div>
+          </dl>
+          <div class="equation" id="equationBox">
+            <code>E = E° + (RT / zF) ln[M<sup>z+</sup>]</code><br>
+            半电池还原电势越高的一侧发生还原，作为阴极。
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const R = 8.314462618;
+    const T = 298.15;
+    const F = 96485.33212;
+    const TEN_LOG_FACTOR = 0.05916;
+
+    const electrodes = [
+      { id: "Mg", name: "镁", ion: "Mg", z: 2, e0: -2.37, metal: "#aabdb5", solution: "#c9f6d8" },
+      { id: "Al", name: "铝", ion: "Al", z: 3, e0: -1.66, metal: "#b9c3c5", solution: "#e0f0ee" },
+      { id: "Zn", name: "锌", ion: "Zn", z: 2, e0: -0.76, metal: "#9aa7a3", solution: "#d6f2ea" },
+      { id: "Fe", name: "铁", ion: "Fe", z: 2, e0: -0.44, metal: "#8a9288", solution: "#cdecc0" },
+      { id: "Ni", name: "镍", ion: "Ni", z: 2, e0: -0.25, metal: "#9aa996", solution: "#aee6b7" },
+      { id: "Pb", name: "铅", ion: "Pb", z: 2, e0: -0.13, metal: "#8e9698", solution: "#e3e8e5" },
+      { id: "Cu", name: "铜", ion: "Cu", z: 2, e0: 0.34, metal: "#c6723f", solution: "#9dd4ff" },
+      { id: "Ag", name: "银", ion: "Ag", z: 1, e0: 0.80, metal: "#d6dcdf", solution: "#ecf2f4" }
+    ];
+
+    const byId = new Map(electrodes.map(item => [item.id, item]));
+    const state = {
+      leftId: "Zn",
+      rightId: "Cu",
+      leftExp: 0,
+      rightExp: 0,
+      running: true,
+      lastUpdate: performance.now(),
+      phase: 0
+    };
+
+    const els = {
+      cellCanvas: document.getElementById("cellCanvas"),
+      curveCanvas: document.getElementById("curveCanvas"),
+      leftMetal: document.getElementById("leftMetal"),
+      rightMetal: document.getElementById("rightMetal"),
+      leftConc: document.getElementById("leftConc"),
+      rightConc: document.getElementById("rightConc"),
+      leftConcValue: document.getElementById("leftConcValue"),
+      rightConcValue: document.getElementById("rightConcValue"),
+      leftConcLabel: document.getElementById("leftConcLabel"),
+      rightConcLabel: document.getElementById("rightConcLabel"),
+      leftRole: document.getElementById("leftRole"),
+      rightRole: document.getElementById("rightRole"),
+      emfValue: document.getElementById("emfValue"),
+      leftPotential: document.getElementById("leftPotential"),
+      rightPotential: document.getElementById("rightPotential"),
+      cathodeText: document.getElementById("cathodeText"),
+      anodeText: document.getElementById("anodeText"),
+      standardText: document.getElementById("standardText"),
+      reactionText: document.getElementById("reactionText"),
+      equationBox: document.getElementById("equationBox"),
+      flowTag: document.getElementById("flowTag"),
+      statusText: document.getElementById("statusText"),
+      plotCaption: document.getElementById("plotCaption"),
+      swapBtn: document.getElementById("swapBtn"),
+      resetBtn: document.getElementById("resetBtn")
+    };
+
+    function populateSelects() {
+      const options = electrodes.map(item => {
+        const sign = item.e0 >= 0 ? "+" : "";
+        return `<option value="${item.id}">${item.name} ${item.id} | E°=${sign}${item.e0.toFixed(2)} V</option>`;
+      }).join("");
+      els.leftMetal.innerHTML = options;
+      els.rightMetal.innerHTML = options;
+      els.leftMetal.value = state.leftId;
+      els.rightMetal.value = state.rightId;
+    }
+
+    function concentration(exp) {
+      return Math.pow(10, Number(exp));
+    }
+
+    function halfPotential(metal, conc) {
+      return metal.e0 + (R * T / (metal.z * F)) * Math.log(conc);
+    }
+
+    function plusSign(value) {
+      return value >= 0 ? "+" : "";
+    }
+
+    function formatVolt(value, digits = 3) {
+      return `${plusSign(value)}${value.toFixed(digits)} V`;
+    }
+
+    function formatConc(value) {
+      if (value >= 0.1 && value < 10) return `${stripZeros(value.toFixed(2))} M`;
+      const exp = Math.round(Math.log10(value));
+      const mantissa = value / Math.pow(10, exp);
+      return `${stripZeros(mantissa.toFixed(2))} × 10${superscriptText(exp)} M`;
+    }
+
+    function stripZeros(text) {
+      return text.replace(/\.?0+$/, "");
+    }
+
+    function superscriptText(value) {
+      const map = {
+        "-": "⁻",
+        "+": "⁺",
+        "0": "⁰",
+        "1": "¹",
+        "2": "²",
+        "3": "³",
+        "4": "⁴",
+        "5": "⁵",
+        "6": "⁶",
+        "7": "⁷",
+        "8": "⁸",
+        "9": "⁹"
+      };
+      return String(value).split("").map(char => map[char] || char).join("");
+    }
+
+    function ionText(metal) {
+      return `${metal.ion}<sup>${metal.z}+</sup>`;
+    }
+
+    function plainIon(metal) {
+      return `${metal.ion}${superscriptText(`${metal.z}+`)}`;
+    }
+
+    function coeff(value) {
+      return value === 1 ? "" : `${value} `;
+    }
+
+    function gcd(a, b) {
+      while (b) {
+        const next = a % b;
+        a = b;
+        b = next;
+      }
+      return a;
+    }
+
+    function lcm(a, b) {
+      return Math.abs(a * b) / gcd(a, b);
+    }
+
+    function hexToRgb(hex) {
+      const clean = hex.replace("#", "");
+      return {
+        r: parseInt(clean.slice(0, 2), 16),
+        g: parseInt(clean.slice(2, 4), 16),
+        b: parseInt(clean.slice(4, 6), 16)
+      };
+    }
+
+    function rgbToString(rgb, alpha = 1) {
+      return `rgba(${Math.round(rgb.r)}, ${Math.round(rgb.g)}, ${Math.round(rgb.b)}, ${alpha})`;
+    }
+
+    function mix(hexA, hexB, amount) {
+      const a = hexToRgb(hexA);
+      const b = hexToRgb(hexB);
+      return {
+        r: a.r + (b.r - a.r) * amount,
+        g: a.g + (b.g - a.g) * amount,
+        b: a.b + (b.b - a.b) * amount
+      };
+    }
+
+    function solutionColor(metal, exp) {
+      const strength = (Number(exp) + 6) / 7;
+      const mixed = mix("#f7fffb", metal.solution, 0.28 + 0.68 * strength);
+      return rgbToString(mixed, 0.9);
+    }
+
+    function calculate() {
+      const left = byId.get(state.leftId);
+      const right = byId.get(state.rightId);
+      const leftConc = concentration(state.leftExp);
+      const rightConc = concentration(state.rightExp);
+      const leftPotential = halfPotential(left, leftConc);
+      const rightPotential = halfPotential(right, rightConc);
+      const delta = rightPotential - leftPotential;
+      const emf = Math.abs(delta);
+      const equilibrium = emf < 0.0005;
+      const cathodeSide = equilibrium ? "none" : (delta > 0 ? "right" : "left");
+      const anodeSide = equilibrium ? "none" : (delta > 0 ? "left" : "right");
+      const cathode = cathodeSide === "left" ? left : cathodeSide === "right" ? right : null;
+      const anode = anodeSide === "left" ? left : anodeSide === "right" ? right : null;
+      const cathodeConc = cathodeSide === "left" ? leftConc : rightConc;
+      const anodeConc = anodeSide === "left" ? leftConc : rightConc;
+      const n = cathode && anode ? lcm(cathode.z, anode.z) : 1;
+      const standard = cathode && anode ? cathode.e0 - anode.e0 : 0;
+
+      return {
+        left,
+        right,
+        leftConc,
+        rightConc,
+        leftPotential,
+        rightPotential,
+        delta,
+        emf,
+        equilibrium,
+        cathodeSide,
+        anodeSide,
+        cathode,
+        anode,
+        cathodeConc,
+        anodeConc,
+        n,
+        standard
+      };
+    }
+
+    function updateUI() {
+      const data = calculate();
+      els.leftConcValue.textContent = formatConc(data.leftConc);
+      els.rightConcValue.textContent = formatConc(data.rightConc);
+      els.leftConcLabel.innerHTML = `左侧 ${ionText(data.left)} 浓度`;
+      els.rightConcLabel.innerHTML = `右侧 ${ionText(data.right)} 浓度`;
+      els.emfValue.textContent = `${data.emf.toFixed(3)} V`;
+      els.leftPotential.textContent = formatVolt(data.leftPotential);
+      els.rightPotential.textContent = formatVolt(data.rightPotential);
+
+      if (data.equilibrium) {
+        els.leftRole.textContent = "近似平衡";
+        els.rightRole.textContent = "近似平衡";
+        els.cathodeText.textContent = "两侧还原电势几乎相同";
+        els.anodeText.textContent = "无明显自发电子流";
+        els.standardText.textContent = `材料差 E° = ${formatVolt(Math.abs(data.right.e0 - data.left.e0))}`;
+        els.reactionText.innerHTML = "电池处于近似平衡状态，动画减弱。";
+        els.flowTag.textContent = "电势差接近 0，电子流暂停";
+        els.statusText.textContent = "接近平衡";
+        els.equationBox.innerHTML = `<code>E = E° + (RT / zF) ln[M<sup>z+</sup>]</code><br>当前两侧半电池还原电势近似相等，因此电动势接近 0。`;
+      } else {
+        els.leftRole.textContent = data.cathodeSide === "left" ? "阴极，发生还原" : "阳极，发生氧化";
+        els.rightRole.textContent = data.cathodeSide === "right" ? "阴极，发生还原" : "阳极，发生氧化";
+        const cathodeSideName = data.cathodeSide === "left" ? "左侧" : "右侧";
+        const anodeSideName = data.anodeSide === "left" ? "左侧" : "右侧";
+        els.cathodeText.innerHTML = `${cathodeSideName} ${data.cathode.name} ${data.cathode.id}，${ionText(data.cathode)} 得电子`;
+        els.anodeText.innerHTML = `${anodeSideName} ${data.anode.name} ${data.anode.id}，金属失电子`;
+        els.standardText.textContent = `该方向 E°cell = ${formatVolt(data.standard)}，n = ${data.n}`;
+        els.reactionText.innerHTML = reactionHTML(data);
+        els.flowTag.textContent = `电子从${anodeSideName}流向${cathodeSideName}，盐桥维持电荷平衡`;
+        els.statusText.textContent = "动画运行中";
+        els.equationBox.innerHTML = equationHTML(data);
+      }
+
+      drawCurve(data);
+    }
+
+    function reactionHTML(data) {
+      const a = data.n / data.anode.z;
+      const c = data.n / data.cathode.z;
+      return `${coeff(a)}${data.anode.id}(s) + ${coeff(c)}${ionText(data.cathode)}(aq) → ${coeff(a)}${ionText(data.anode)}(aq) + ${coeff(c)}${data.cathode.id}(s)`;
+    }
+
+    function equationHTML(data) {
+      const a = data.n / data.anode.z;
+      const c = data.n / data.cathode.z;
+      const qText = `Q = [${plainIon(data.anode)}]<sup>${a}</sup> / [${plainIon(data.cathode)}]<sup>${c}</sup>`;
+      return `<code>${qText}</code><br><code>Ecell = E°cell - (0.05916 / ${data.n}) log Q</code><br>浓度升高会提高该半电池的还原电势；价态越大，单倍浓度变化带来的电势改变量越小。`;
+    }
+
+    function resizeCanvas(canvas, baseWidth, baseHeight) {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const targetWidth = Math.max(1, Math.round(rect.width * dpr));
+      const targetHeight = Math.max(1, Math.round(rect.height * dpr));
+      if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+      }
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(targetWidth / baseWidth, 0, 0, targetHeight / baseHeight, 0, 0);
+      return ctx;
+    }
+
+    function roundedRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    function drawCell(now) {
+      const data = calculate();
+      const dt = Math.min(0.05, (now - state.lastUpdate) / 1000 || 0);
+      state.lastUpdate = now;
+      const intensity = Math.min(1, data.emf / 2.5);
+      if (!data.equilibrium) state.phase = (state.phase + dt * (0.08 + intensity * 0.42)) % 1;
+
+      const ctx = resizeCanvas(els.cellCanvas, 900, 520);
+      ctx.clearRect(0, 0, 900, 520);
+
+      drawBackground(ctx);
+      drawBeaker(ctx, 105, 170, 280, 270, data.left, state.leftExp, data.cathodeSide === "left", data.anodeSide === "left", now);
+      drawBeaker(ctx, 515, 170, 280, 270, data.right, state.rightExp, data.cathodeSide === "right", data.anodeSide === "right", now);
+      drawSaltBridge(ctx, data, intensity, now);
+      drawWireAndMeter(ctx, data, intensity, now);
+      drawLabels(ctx, data);
+
+      requestAnimationFrame(drawCell);
+    }
+
+    function drawBackground(ctx) {
+      ctx.fillStyle = "#fbfdfb";
+      ctx.fillRect(0, 0, 900, 520);
+      ctx.strokeStyle = "rgba(96, 112, 103, 0.12)";
+      ctx.lineWidth = 1;
+      for (let x = 50; x < 900; x += 50) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, 520);
+        ctx.stroke();
+      }
+      for (let y = 50; y < 520; y += 50) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(900, y);
+        ctx.stroke();
+      }
+    }
+
+    function drawBeaker(ctx, x, y, w, h, metal, exp, isCathode, isAnode, now) {
+      const fillY = y + 82;
+      const solutionH = h - 96;
+      ctx.save();
+      roundedRect(ctx, x, y + 36, w, h - 36, 18);
+      ctx.clip();
+      ctx.fillStyle = solutionColor(metal, exp);
+      ctx.beginPath();
+      ctx.moveTo(x + 12, fillY);
+      for (let px = x + 12; px <= x + w - 12; px += 18) {
+        const wave = Math.sin((px * 0.035) + now * 0.0028) * 4;
+        ctx.lineTo(px, fillY + wave);
+      }
+      ctx.lineTo(x + w - 12, y + h - 10);
+      ctx.lineTo(x + 12, y + h - 10);
+      ctx.closePath();
+      ctx.fill();
+
+      for (let i = 0; i < 28; i++) {
+        const seed = i * 37.17;
+        const px = x + 28 + ((seed * 19) % (w - 56));
+        const py = fillY + 22 + ((seed * 11) % (solutionH - 32));
+        ctx.globalAlpha = 0.18 + ((i % 5) * 0.04);
+        ctx.fillStyle = i % 2 ? "#1f9f78" : "#2f7dd3";
+        ctx.beginPath();
+        ctx.arc(px + Math.sin(now * 0.001 + i) * 3, py + Math.cos(now * 0.0013 + i) * 2, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
+
+      ctx.strokeStyle = "#8ea096";
+      ctx.lineWidth = 4;
+      roundedRect(ctx, x, y + 36, w, h - 36, 18);
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(96, 112, 103, 0.28)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(x + w / 2, y + 36, w / 2 - 4, 23, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      const electrodeX = x + w / 2 - 28;
+      const electrodeY = y + 5;
+      const electrodeW = 56;
+      const electrodeH = 230;
+      const grad = ctx.createLinearGradient(electrodeX, electrodeY, electrodeX + electrodeW, electrodeY);
+      grad.addColorStop(0, "#ffffff");
+      grad.addColorStop(0.15, metal.metal);
+      grad.addColorStop(0.72, metal.metal);
+      grad.addColorStop(1, "#65706a");
+      ctx.fillStyle = grad;
+      roundedRect(ctx, electrodeX, electrodeY, electrodeW, electrodeH, 8);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(24, 35, 28, 0.42)";
+      ctx.lineWidth = 2;
+      roundedRect(ctx, electrodeX, electrodeY, electrodeW, electrodeH, 8);
+      ctx.stroke();
+
+      if (isCathode) drawCathodeEffect(ctx, electrodeX, electrodeY, electrodeW, electrodeH, now);
+      if (isAnode) drawAnodeEffect(ctx, electrodeX, electrodeY, electrodeW, electrodeH, now, metal);
+
+      ctx.fillStyle = "#18231c";
+      ctx.font = "700 18px Microsoft YaHei, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(`${metal.name} ${metal.id}`, x + w / 2, y + h + 31);
+      ctx.font = "13px Microsoft YaHei, sans-serif";
+      ctx.fillStyle = "#607067";
+      ctx.fillText(`${plainIon(metal)} = ${formatConc(concentration(exp))}`, x + w / 2, y + h + 52);
+    }
+
+    function drawCathodeEffect(ctx, x, y, w, h, now) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(0, 168, 138, 0.52)";
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 4; i++) {
+        const p = ((now * 0.00045) + i / 4) % 1;
+        ctx.globalAlpha = 1 - p;
+        roundedRect(ctx, x - 10 - p * 18, y + 62 - p * 18, w + 20 + p * 36, h - 76 + p * 36, 10 + p * 18);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      ctx.fillStyle = "#f5d042";
+      for (let i = 0; i < 8; i++) {
+        const py = y + 80 + ((i * 29 + now * 0.025) % (h - 98));
+        ctx.beginPath();
+        ctx.arc(x + w + 8 + Math.sin(i + now * 0.003) * 3, py, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawAnodeEffect(ctx, x, y, w, h, now, metal) {
+      ctx.save();
+      const rgb = hexToRgb(metal.metal);
+      ctx.fillStyle = rgbToString(rgb, 0.62);
+      for (let i = 0; i < 12; i++) {
+        const p = ((now * 0.00028) + i / 12) % 1;
+        const side = i % 2 ? -1 : 1;
+        const px = x + (side > 0 ? w + 4 + p * 34 : -4 - p * 34);
+        const py = y + 86 + ((i * 23) % (h - 110)) + Math.sin(now * 0.002 + i) * 3;
+        ctx.globalAlpha = 1 - p * 0.72;
+        ctx.beginPath();
+        ctx.arc(px, py, 2.5 + p * 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function drawWireAndMeter(ctx, data, intensity, now) {
+      const leftTop = { x: 238, y: 176 };
+      const rightTop = { x: 648, y: 176 };
+      const p1 = { x: 325, y: 54 };
+      const p2 = { x: 575, y: 54 };
+
+      ctx.strokeStyle = "#38443c";
+      ctx.lineWidth = 7;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(leftTop.x, leftTop.y);
+      ctx.bezierCurveTo(p1.x, p1.y, p2.x, p2.y, rightTop.x, rightTop.y);
+      ctx.stroke();
+      ctx.strokeStyle = "#bfee58";
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.55;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      drawVoltmeter(ctx, 450, 94, data.emf, intensity);
+
+      if (!data.equilibrium) {
+        const count = 8 + Math.round(intensity * 9);
+        for (let i = 0; i < count; i++) {
+          const base = (state.phase + i / count) % 1;
+          const t = data.anodeSide === "left" ? base : 1 - base;
+          const point = cubicPoint(leftTop, p1, p2, rightTop, t);
+          drawElectron(ctx, point.x, point.y, 4.8 + intensity * 2);
+        }
+      }
+    }
+
+    function drawVoltmeter(ctx, x, y, emf, intensity) {
+      ctx.save();
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "#18231c";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(x, y, 58, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = "#d9e5dd";
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.arc(x, y + 6, 35, Math.PI * 0.78, Math.PI * 2.22);
+      ctx.stroke();
+      ctx.strokeStyle = "#00a88a";
+      ctx.beginPath();
+      ctx.arc(x, y + 6, 35, Math.PI * 0.78, Math.PI * (0.78 + 1.44 * intensity));
+      ctx.stroke();
+
+      const angle = Math.PI * (0.78 + 1.44 * intensity);
+      ctx.strokeStyle = "#d93b54";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(x, y + 6);
+      ctx.lineTo(x + Math.cos(angle) * 31, y + 6 + Math.sin(angle) * 31);
+      ctx.stroke();
+      ctx.fillStyle = "#d93b54";
+      ctx.beginPath();
+      ctx.arc(x, y + 6, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#18231c";
+      ctx.font = "800 17px Microsoft YaHei, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(`${emf.toFixed(2)} V`, x, y - 9);
+      ctx.font = "12px Microsoft YaHei, sans-serif";
+      ctx.fillStyle = "#607067";
+      ctx.fillText("voltmeter", x, y + 46);
+      ctx.restore();
+    }
+
+    function drawElectron(ctx, x, y, radius) {
+      ctx.save();
+      ctx.fillStyle = "#f5d042";
+      ctx.strokeStyle = "#725f00";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#18231c";
+      ctx.font = "800 12px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("-", x, y - 0.5);
+      ctx.restore();
+    }
+
+    function drawSaltBridge(ctx, data, intensity, now) {
+      const start = { x: 338, y: 250 };
+      const end = { x: 562, y: 250 };
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "#d9e5dd";
+      ctx.lineWidth = 38;
+      ctx.beginPath();
+      ctx.moveTo(start.x, start.y);
+      ctx.bezierCurveTo(350, 144, 550, 144, end.x, end.y);
+      ctx.stroke();
+      ctx.strokeStyle = "#f8fff8";
+      ctx.lineWidth = 26;
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(96, 112, 103, 0.24)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.fillStyle = "#607067";
+      ctx.font = "700 13px Microsoft YaHei, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("盐桥", 450, 153);
+
+      if (data.equilibrium) return;
+      const bridgeP1 = { x: 374, y: 158 };
+      const bridgeP2 = { x: 526, y: 158 };
+      const count = 5 + Math.round(intensity * 8);
+      for (let i = 0; i < count; i++) {
+        const p = (state.phase * 0.86 + i / count) % 1;
+        const cationTargetRight = data.cathodeSide === "right";
+        const anionTargetRight = data.anodeSide === "right";
+        drawIonOnBridge(ctx, start, bridgeP1, bridgeP2, end, cationTargetRight ? p : 1 - p, "+", "#12a150");
+        drawIonOnBridge(ctx, start, bridgeP1, bridgeP2, end, anionTargetRight ? p : 1 - p, "-", "#d93b54", 0.5);
+      }
+    }
+
+    function drawIonOnBridge(ctx, p0, p1, p2, p3, t, sign, color, lift = 0) {
+      const point = cubicPoint(p0, p1, p2, p3, t);
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.86;
+      ctx.beginPath();
+      ctx.arc(point.x, point.y + lift * 10, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "800 12px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(sign, point.x, point.y + lift * 10 - 0.5);
+      ctx.restore();
+    }
+
+    function cubicPoint(p0, p1, p2, p3, t) {
+      const u = 1 - t;
+      return {
+        x: u ** 3 * p0.x + 3 * u ** 2 * t * p1.x + 3 * u * t ** 2 * p2.x + t ** 3 * p3.x,
+        y: u ** 3 * p0.y + 3 * u ** 2 * t * p1.y + 3 * u * t ** 2 * p2.y + t ** 3 * p3.y
+      };
+    }
+
+    function drawLabels(ctx, data) {
+      ctx.textAlign = "center";
+      ctx.font = "800 15px Microsoft YaHei, sans-serif";
+      if (data.equilibrium) {
+        drawBadge(ctx, 450, 472, "近似平衡：无明显自发反应", "#607067", "#ffffff");
+        return;
+      }
+      const leftBadge = data.cathodeSide === "left" ? "阴极 + 还原" : "阳极 - 氧化";
+      const rightBadge = data.cathodeSide === "right" ? "阴极 + 还原" : "阳极 - 氧化";
+      drawBadge(ctx, 245, 462, leftBadge, data.cathodeSide === "left" ? "#00a88a" : "#d93b54", "#ffffff");
+      drawBadge(ctx, 655, 462, rightBadge, data.cathodeSide === "right" ? "#00a88a" : "#d93b54", "#ffffff");
+
+      ctx.fillStyle = "#607067";
+      ctx.font = "13px Microsoft YaHei, sans-serif";
+      const direction = data.anodeSide === "left" ? "左 → 右" : "右 → 左";
+      ctx.fillText(`电子流：${direction}`, 450, 497);
+    }
+
+    function drawBadge(ctx, x, y, text, fill, textColor) {
+      ctx.save();
+      ctx.font = "800 15px Microsoft YaHei, sans-serif";
+      const w = ctx.measureText(text).width + 28;
+      roundedRect(ctx, x - w / 2, y - 18, w, 34, 17);
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.fillStyle = textColor;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, x, y);
+      ctx.restore();
+    }
+
+    function drawCurve(data) {
+      const chart = { w: 560, h: 320 };
+      const ctx = resizeCanvas(els.curveCanvas, chart.w, chart.h);
+      ctx.clearRect(0, 0, chart.w, chart.h);
+      ctx.fillStyle = "#fbfdfb";
+      ctx.fillRect(0, 0, chart.w, chart.h);
+      const pad = { l: 76, r: 24, t: 28, b: 78 };
+      const samples = [];
+      let minY = Infinity;
+      let maxY = -Infinity;
+      for (let i = 0; i <= 140; i++) {
+        const exp = -6 + (7 * i) / 140;
+        const leftPotential = halfPotential(data.left, concentration(exp));
+        const rightPotential = halfPotential(data.right, data.rightConc);
+        const emf = Math.abs(rightPotential - leftPotential);
+        samples.push({ exp, emf });
+        minY = Math.min(minY, emf);
+        maxY = Math.max(maxY, emf);
+      }
+      maxY = Math.max(maxY, data.emf, 0.05);
+      minY = Math.min(minY, data.emf, 0);
+      const spread = Math.max(0.05, maxY - minY);
+      minY = Math.max(0, minY - spread * 0.1);
+      maxY = maxY + spread * 0.12;
+
+      const plotW = chart.w - pad.l - pad.r;
+      const plotH = chart.h - pad.t - pad.b;
+      const xOf = exp => pad.l + ((exp + 6) / 7) * plotW;
+      const yOf = emf => pad.t + (1 - (emf - minY) / (maxY - minY)) * plotH;
+
+      ctx.strokeStyle = "#d9e5dd";
+      ctx.lineWidth = 1;
+      ctx.fillStyle = "#607067";
+      ctx.font = "12px Microsoft YaHei, sans-serif";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+      for (let i = 0; i <= 4; i++) {
+        const value = minY + (maxY - minY) * i / 4;
+        const y = yOf(value);
+        ctx.beginPath();
+        ctx.moveTo(pad.l, y);
+        ctx.lineTo(chart.w - pad.r, y);
+        ctx.stroke();
+        ctx.fillText(value.toFixed(2), pad.l - 10, y);
+      }
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      for (let e = -6; e <= 1; e++) {
+        const x = xOf(e);
+        ctx.beginPath();
+        ctx.moveTo(x, pad.t);
+        ctx.lineTo(x, chart.h - pad.b);
+        ctx.stroke();
+        if (e === -6 || e === -3 || e === 0 || e === 1) {
+          ctx.fillText(e === 0 ? "1" : `10${superscriptText(e)}`, x, chart.h - pad.b + 14);
+        }
+      }
+
+      ctx.strokeStyle = "#18231c";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(pad.l, pad.t);
+      ctx.lineTo(pad.l, chart.h - pad.b);
+      ctx.lineTo(chart.w - pad.r, chart.h - pad.b);
+      ctx.stroke();
+
+      ctx.strokeStyle = "#00a88a";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      samples.forEach((sample, index) => {
+        const x = xOf(sample.exp);
+        const y = yOf(sample.emf);
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      const markerX = xOf(Number(state.leftExp));
+      const markerY = yOf(data.emf);
+      ctx.strokeStyle = "rgba(217, 59, 84, 0.32)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(markerX, pad.t);
+      ctx.lineTo(markerX, chart.h - pad.b);
+      ctx.stroke();
+      ctx.fillStyle = "#d93b54";
+      ctx.beginPath();
+      ctx.arc(markerX, markerY, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = "#18231c";
+      ctx.font = "800 13px Microsoft YaHei, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.save();
+      ctx.translate(22, pad.t + plotH / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText("Ecell / V", 0, 0);
+      ctx.restore();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(`左侧 ${plainIon(data.left)} 浓度 / M`, pad.l + plotW / 2, chart.h - 16);
+
+      els.plotCaption.textContent = `固定右侧 ${plainIon(data.right)} = ${formatConc(data.rightConc)}，扫描左侧 ${plainIon(data.left)} 浓度；当前 Ecell = ${data.emf.toFixed(3)} V。`;
+    }
+
+    function syncStateFromInputs() {
+      state.leftId = els.leftMetal.value;
+      state.rightId = els.rightMetal.value;
+      state.leftExp = Number(els.leftConc.value);
+      state.rightExp = Number(els.rightConc.value);
+      updateUI();
+    }
+
+    function resetZnCu() {
+      state.leftId = "Zn";
+      state.rightId = "Cu";
+      state.leftExp = 0;
+      state.rightExp = 0;
+      renderInputs();
+      updateUI();
+    }
+
+    function swapSides() {
+      const leftId = state.leftId;
+      const leftExp = state.leftExp;
+      state.leftId = state.rightId;
+      state.leftExp = state.rightExp;
+      state.rightId = leftId;
+      state.rightExp = leftExp;
+      renderInputs();
+      updateUI();
+    }
+
+    function renderInputs() {
+      els.leftMetal.value = state.leftId;
+      els.rightMetal.value = state.rightId;
+      els.leftConc.value = state.leftExp;
+      els.rightConc.value = state.rightExp;
+    }
+
+    function attachEvents() {
+      [els.leftMetal, els.rightMetal, els.leftConc, els.rightConc].forEach(input => {
+        input.addEventListener("input", syncStateFromInputs);
+      });
+      els.swapBtn.addEventListener("click", swapSides);
+      els.resetBtn.addEventListener("click", resetZnCu);
+      window.addEventListener("resize", () => {
+        updateUI();
+      });
+    }
+
+    populateSelects();
+    renderInputs();
+    attachEvents();
+    updateUI();
+    requestAnimationFrame(drawCell);
+  </script>
+</body>
+</html>
