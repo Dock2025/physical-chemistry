@@ -1,0 +1,1049 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>阿伦尼乌斯方程实验：温度对反应速率常数的影响</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f8f7;
+      --panel: #ffffff;
+      --ink: #17211d;
+      --muted: #62706b;
+      --line: #d9e2de;
+      --green: #0f8f68;
+      --green-dark: #0b6f54;
+      --orange: #e26d2d;
+      --yellow: #ffd166;
+      --cyan: #0f9db6;
+      --danger: #b9443d;
+      --shadow: 0 16px 42px rgba(16, 35, 27, 0.10);
+      --radius: 8px;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: end;
+      padding: 8px 0 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.4rem, 2.2vw, 2.15rem);
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      max-width: 900px;
+    }
+
+    .formula {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 16px;
+      min-width: 310px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfffd;
+      box-shadow: var(--shadow);
+      white-space: nowrap;
+    }
+
+    .formula strong {
+      font-size: 1.35rem;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--green-dark);
+    }
+
+    .formula span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 340px minmax(0, 1fr);
+      gap: 18px;
+      padding-top: 18px;
+    }
+
+    .panel,
+    .metric,
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .controls {
+      padding: 16px;
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .control {
+      display: grid;
+      gap: 8px;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    label {
+      font-weight: 700;
+    }
+
+    .value {
+      color: var(--green-dark);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--green);
+    }
+
+    input[type="number"],
+    select {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 10px;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+
+    .segmented button,
+    .action {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      min-height: 38px;
+      cursor: pointer;
+      transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+    }
+
+    .segmented button:hover,
+    .action:hover {
+      transform: translateY(-1px);
+      border-color: #b9c8c2;
+    }
+
+    .segmented button.active {
+      background: var(--green);
+      color: #fff;
+      border-color: var(--green);
+    }
+
+    .action.primary {
+      background: var(--green);
+      color: #fff;
+      border-color: var(--green);
+      font-weight: 800;
+    }
+
+    .action.secondary {
+      color: var(--green-dark);
+      font-weight: 700;
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .dashboard {
+      display: grid;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      padding: 14px;
+      min-width: 0;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.86rem;
+      margin-bottom: 7px;
+    }
+
+    .metric strong {
+      display: block;
+      color: var(--ink);
+      font-size: clamp(1.1rem, 1.7vw, 1.55rem);
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+
+    .grid-two {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+      gap: 18px;
+    }
+
+    .card {
+      padding: 16px;
+      min-width: 0;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      min-height: 300px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      overflow: hidden;
+      background:
+        linear-gradient(#eef5f2 1px, transparent 1px),
+        linear-gradient(90deg, #eef5f2 1px, transparent 1px),
+        #ffffff;
+      background-size: 42px 42px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .reaction-stage {
+      display: grid;
+      gap: 14px;
+    }
+
+    .flask {
+      position: relative;
+      height: 220px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: linear-gradient(180deg, #fcfffe, #f2faf7);
+      overflow: hidden;
+    }
+
+    .liquid {
+      position: absolute;
+      left: 34px;
+      right: 34px;
+      bottom: 24px;
+      height: 62%;
+      border-radius: 0 0 80px 80px;
+      background: linear-gradient(180deg, rgba(15, 157, 182, 0.28), rgba(15, 143, 104, 0.55));
+      border: 1px solid rgba(15, 143, 104, 0.28);
+      transition: height 280ms ease, background 280ms ease;
+    }
+
+    .neck {
+      position: absolute;
+      left: 50%;
+      top: 14px;
+      width: 66px;
+      height: 78px;
+      transform: translateX(-50%);
+      border: 2px solid #9fb2aa;
+      border-bottom: 0;
+      border-radius: 18px 18px 0 0;
+      background: rgba(255, 255, 255, 0.64);
+    }
+
+    .body-outline {
+      position: absolute;
+      left: 50%;
+      bottom: 16px;
+      width: min(76%, 270px);
+      height: 155px;
+      transform: translateX(-50%);
+      border: 2px solid #9fb2aa;
+      border-top: 0;
+      border-radius: 22px 22px 90px 90px;
+      pointer-events: none;
+    }
+
+    .bubble {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.8);
+      animation: rise var(--speed, 3s) linear infinite;
+      opacity: 0;
+    }
+
+    @keyframes rise {
+      0% {
+        transform: translateY(0) scale(0.7);
+        opacity: 0;
+      }
+      15% {
+        opacity: 0.9;
+      }
+      100% {
+        transform: translateY(-130px) scale(1.2);
+        opacity: 0;
+      }
+    }
+
+    .progress-shell {
+      height: 14px;
+      border-radius: 999px;
+      background: #edf3f0;
+      border: 1px solid var(--line);
+      overflow: hidden;
+    }
+
+    .progress {
+      height: 100%;
+      width: 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--green), var(--orange));
+      transition: width 220ms linear;
+    }
+
+    .readout {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .readout div {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 10px;
+      background: #fbfffd;
+    }
+
+    .readout span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-bottom: 5px;
+    }
+
+    .readout strong {
+      font-variant-numeric: tabular-nums;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-variant-numeric: tabular-nums;
+    }
+
+    th,
+    td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    th:first-child,
+    td:first-child {
+      text-align: left;
+    }
+
+    thead th {
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 700;
+    }
+
+    tbody tr.highlight {
+      background: #effaf6;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+    }
+
+    .insights {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .insights li {
+      display: grid;
+      grid-template-columns: 12px minmax(0, 1fr);
+      gap: 10px;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
+    .insights li::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--orange);
+      margin-top: 8px;
+    }
+
+    .warning {
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    @media (max-width: 1080px) {
+      main,
+      .grid-two {
+        grid-template-columns: 1fr;
+      }
+
+      .metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      header {
+        grid-template-columns: 1fr;
+      }
+
+      .formula {
+        justify-content: flex-start;
+        min-width: 0;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .app {
+        padding: 12px;
+      }
+
+      .metrics,
+      .readout {
+        grid-template-columns: 1fr;
+      }
+
+      .chart-wrap {
+        aspect-ratio: 4 / 3;
+        min-height: 260px;
+      }
+
+      th,
+      td {
+        padding: 9px 7px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>阿伦尼乌斯方程实验：温度对反应速率常数的影响</h1>
+        <p class="subtitle">改变温度、活化能和指前因子，观察速率常数 k 的指数变化，并用模拟实验数据验证 ln k 与 1/T 的线性关系。</p>
+      </div>
+      <div class="formula" aria-label="阿伦尼乌斯方程">
+        <strong>k = A · e<sup>−Ea / RT</sup></strong>
+        <span>R = 8.314 J·mol⁻¹·K⁻¹</span>
+      </div>
+    </header>
+
+    <main>
+      <aside class="panel controls" aria-label="实验控制区">
+        <h2 class="panel-title">实验参数</h2>
+
+        <div class="control">
+          <div class="control-row">
+            <label for="temp">温度 T</label>
+            <span class="value" id="tempValue">298 K</span>
+          </div>
+          <input id="temp" type="range" min="250" max="700" value="298" step="1">
+        </div>
+
+        <div class="control">
+          <div class="control-row">
+            <label for="ea">活化能 Ea</label>
+            <span class="value" id="eaValue">55 kJ/mol</span>
+          </div>
+          <input id="ea" type="range" min="15" max="140" value="55" step="1">
+        </div>
+
+        <div class="control">
+          <div class="control-row">
+            <label for="factor">指前因子 A</label>
+            <span class="value" id="factorValue">1.0×10⁸ s⁻¹</span>
+          </div>
+          <input id="factor" type="range" min="4" max="14" value="8" step="0.1">
+          <p class="hint">滑块表示 10 的指数，例如 8 代表 A = 10⁸ s⁻¹。</p>
+        </div>
+
+        <div class="control">
+          <div class="control-row">
+            <label>图像模式</label>
+          </div>
+          <div class="segmented" role="group" aria-label="图像模式">
+            <button type="button" id="modeK" class="active">k - T</button>
+            <button type="button" id="modeLn">ln k - 1/T</button>
+          </div>
+        </div>
+
+        <div class="control">
+          <label for="noise">实验误差</label>
+          <select id="noise">
+            <option value="0">无误差</option>
+            <option value="0.03" selected>轻微误差 ±3%</option>
+            <option value="0.08">明显误差 ±8%</option>
+          </select>
+        </div>
+
+        <button class="action primary" id="runExperiment" type="button">生成实验数据</button>
+        <button class="action secondary" id="resetReaction" type="button">重置反应模拟</button>
+      </aside>
+
+      <section class="dashboard" aria-label="模拟结果">
+        <div class="metrics" aria-label="关键读数">
+          <div class="metric">
+            <span>当前速率常数 k</span>
+            <strong id="kReadout">0.000 s⁻¹</strong>
+          </div>
+          <div class="metric">
+            <span>ln k</span>
+            <strong id="lnReadout">0.000</strong>
+          </div>
+          <div class="metric">
+            <span>1 / T</span>
+            <strong id="invTReadout">0.003356 K⁻¹</strong>
+          </div>
+          <div class="metric">
+            <span>温度每升高 10 K</span>
+            <strong id="q10Readout">×1.00</strong>
+          </div>
+        </div>
+
+        <div class="grid-two">
+          <article class="card">
+            <div class="card-head">
+              <h2 id="chartTitle">速率常数随温度变化</h2>
+              <span class="hint" id="chartNote">指数曲线：温度升高，k 快速增大</span>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="chart" aria-label="阿伦尼乌斯图像"></canvas>
+            </div>
+          </article>
+
+          <article class="card reaction-stage">
+            <div class="card-head">
+              <h2>反应进度模拟</h2>
+              <span class="hint">一级反应 C = C₀e⁻ᵏᵗ</span>
+            </div>
+            <div class="flask" aria-label="反应瓶动画">
+              <div class="neck"></div>
+              <div class="liquid" id="liquid"></div>
+              <div class="body-outline"></div>
+              <span class="bubble" style="left: 30%; bottom: 54px; --speed: 2.7s"></span>
+              <span class="bubble" style="left: 43%; bottom: 42px; --speed: 2.2s"></span>
+              <span class="bubble" style="left: 56%; bottom: 58px; --speed: 1.9s"></span>
+              <span class="bubble" style="left: 66%; bottom: 46px; --speed: 2.5s"></span>
+            </div>
+            <div class="progress-shell" aria-label="反应进度">
+              <div class="progress" id="progress"></div>
+            </div>
+            <div class="readout">
+              <div>
+                <span>模拟时间</span>
+                <strong id="timeReadout">0.0 s</strong>
+              </div>
+              <div>
+                <span>已反应比例</span>
+                <strong id="conversionReadout">0.0%</strong>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="grid-two">
+          <article class="card">
+            <div class="card-head">
+              <h2>实验数据记录</h2>
+              <span class="hint">用多组温度估计 Arrhenius 关系</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>温度 / K</th>
+                    <th>1/T / K⁻¹</th>
+                    <th>k / s⁻¹</th>
+                    <th>ln k</th>
+                  </tr>
+                </thead>
+                <tbody id="dataBody"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <h2>观察结论</h2>
+            </div>
+            <ul class="insights">
+              <li id="insightTemp">升高温度会使更多分子跨过活化能势垒，因此 k 变大。</li>
+              <li id="insightEa">活化能越高，曲线对温度越敏感，低温下反应尤其慢。</li>
+              <li id="insightLinear">把 ln k 对 1/T 作图，会得到斜率约为 −Ea/R 的直线。</li>
+              <li id="insightWarning">当 k 很大时，反应会在很短时间内接近完成。</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const R = 8.314;
+    const temp = document.getElementById("temp");
+    const ea = document.getElementById("ea");
+    const factor = document.getElementById("factor");
+    const noise = document.getElementById("noise");
+    const tempValue = document.getElementById("tempValue");
+    const eaValue = document.getElementById("eaValue");
+    const factorValue = document.getElementById("factorValue");
+    const kReadout = document.getElementById("kReadout");
+    const lnReadout = document.getElementById("lnReadout");
+    const invTReadout = document.getElementById("invTReadout");
+    const q10Readout = document.getElementById("q10Readout");
+    const chart = document.getElementById("chart");
+    const ctx = chart.getContext("2d");
+    const chartTitle = document.getElementById("chartTitle");
+    const chartNote = document.getElementById("chartNote");
+    const dataBody = document.getElementById("dataBody");
+    const modeK = document.getElementById("modeK");
+    const modeLn = document.getElementById("modeLn");
+    const runExperiment = document.getElementById("runExperiment");
+    const resetReaction = document.getElementById("resetReaction");
+    const progress = document.getElementById("progress");
+    const liquid = document.getElementById("liquid");
+    const timeReadout = document.getElementById("timeReadout");
+    const conversionReadout = document.getElementById("conversionReadout");
+    const bubbles = Array.from(document.querySelectorAll(".bubble"));
+    const insightTemp = document.getElementById("insightTemp");
+    const insightEa = document.getElementById("insightEa");
+    const insightWarning = document.getElementById("insightWarning");
+
+    let chartMode = "k";
+    let reactionStart = performance.now();
+    let sampleTemps = [273, 293, 313, 333, 353, 373];
+    let tableRows = [];
+
+    function getParams() {
+      return {
+        T: Number(temp.value),
+        Ea: Number(ea.value) * 1000,
+        A: Math.pow(10, Number(factor.value))
+      };
+    }
+
+    function arrhenius(T, Ea, A) {
+      return A * Math.exp(-Ea / (R * T));
+    }
+
+    function formatSci(value, digits = 3) {
+      if (value === 0) return "0";
+      const abs = Math.abs(value);
+      if (abs >= 0.001 && abs < 10000) return value.toPrecision(digits);
+      const exponent = Math.floor(Math.log10(abs));
+      const mantissa = value / Math.pow(10, exponent);
+      return `${mantissa.toFixed(digits - 1)}×10${toSuperscript(exponent)}`;
+    }
+
+    function toSuperscript(value) {
+      const map = {
+        "-": "⁻",
+        "0": "⁰",
+        "1": "¹",
+        "2": "²",
+        "3": "³",
+        "4": "⁴",
+        "5": "⁵",
+        "6": "⁶",
+        "7": "⁷",
+        "8": "⁸",
+        "9": "⁹"
+      };
+      return String(value).split("").map((char) => map[char] || char).join("");
+    }
+
+    function formatLn(value) {
+      if (!Number.isFinite(value)) return "不可测";
+      return value.toFixed(3);
+    }
+
+    function syncLabels() {
+      const { T, Ea, A } = getParams();
+      const k = arrhenius(T, Ea, A);
+      const lnK = Math.log(k);
+      const q10 = arrhenius(T + 10, Ea, A) / k;
+
+      tempValue.textContent = `${T} K`;
+      eaValue.textContent = `${(Ea / 1000).toFixed(0)} kJ/mol`;
+      factorValue.textContent = `${formatSci(A, 2)} s⁻¹`;
+      kReadout.textContent = `${formatSci(k)} s⁻¹`;
+      lnReadout.textContent = formatLn(lnK);
+      invTReadout.textContent = `${(1 / T).toFixed(6)} K⁻¹`;
+      q10Readout.textContent = `×${q10.toFixed(2)}`;
+
+      insightTemp.textContent = `当前 ${T} K 下，k = ${formatSci(k)} s⁻¹；继续升温会让指数项变大。`;
+      insightEa.textContent = `Ea = ${(Ea / 1000).toFixed(0)} kJ/mol，斜率理论值 −Ea/R ≈ ${(-Ea / R).toFixed(0)} K。`;
+      insightWarning.innerHTML = k > 1
+        ? `<span class="warning">当前 k 较大，模拟反应会快速完成。</span>`
+        : "当 k 很大时，反应会在很短时间内接近完成。";
+    }
+
+    function resizeCanvas() {
+      const rect = chart.getBoundingClientRect();
+      const ratio = window.devicePixelRatio || 1;
+      chart.width = Math.max(320, Math.floor(rect.width * ratio));
+      chart.height = Math.max(240, Math.floor(rect.height * ratio));
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    }
+
+    function makeCurvePoints() {
+      const { Ea, A } = getParams();
+      const points = [];
+      for (let T = 250; T <= 700; T += 5) {
+        const k = arrhenius(T, Ea, A);
+        points.push({
+          T,
+          invT: 1 / T,
+          k,
+          lnK: Math.log(k)
+        });
+      }
+      return points;
+    }
+
+    function mapValue(value, min, max, start, end) {
+      if (max === min) return (start + end) / 2;
+      return start + ((value - min) / (max - min)) * (end - start);
+    }
+
+    function niceBounds(values, pad = 0.08) {
+      let min = Math.min(...values);
+      let max = Math.max(...values);
+      if (min === max) {
+        min -= 1;
+        max += 1;
+      }
+      const spread = max - min;
+      return [min - spread * pad, max + spread * pad];
+    }
+
+    function drawChart() {
+      resizeCanvas();
+      const rect = chart.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
+      const pad = {
+        left: 68,
+        right: 28,
+        top: 26,
+        bottom: 52
+      };
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, width, height);
+
+      const curve = makeCurvePoints();
+      const current = getParams();
+      const currentK = arrhenius(current.T, current.Ea, current.A);
+      const table = tableRows.length ? tableRows : makeTableRows(false);
+
+      let xValues;
+      let yValues;
+      let xLabel;
+      let yLabel;
+      let currentPoint;
+
+      if (chartMode === "k") {
+        xValues = curve.map((p) => p.T);
+        yValues = curve.map((p) => Math.log10(p.k));
+        xLabel = "T / K";
+        yLabel = "log₁₀ k";
+        currentPoint = { x: current.T, y: Math.log10(currentK) };
+        chartTitle.textContent = "速率常数随温度变化";
+        chartNote.textContent = "纵轴取 log₁₀ k，便于观察指数增长";
+      } else {
+        xValues = curve.map((p) => p.invT);
+        yValues = curve.map((p) => p.lnK);
+        xLabel = "1/T / K⁻¹";
+        yLabel = "ln k";
+        currentPoint = { x: 1 / current.T, y: Math.log(currentK) };
+        chartTitle.textContent = "Arrhenius 线性图";
+        chartNote.textContent = "ln k = ln A − Ea/R · 1/T";
+      }
+
+      const [xMin, xMax] = niceBounds(xValues, 0.04);
+      const [yMin, yMax] = niceBounds(yValues, 0.08);
+      const xToPx = (x) => mapValue(x, xMin, xMax, pad.left, width - pad.right);
+      const yToPx = (y) => mapValue(y, yMin, yMax, height - pad.bottom, pad.top);
+
+      ctx.strokeStyle = "#d9e2de";
+      ctx.lineWidth = 1;
+      ctx.fillStyle = "#62706b";
+      ctx.font = "12px Microsoft YaHei, sans-serif";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+
+      for (let i = 0; i <= 5; i += 1) {
+        const t = i / 5;
+        const y = pad.top + t * (height - pad.top - pad.bottom);
+        const val = yMax - t * (yMax - yMin);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(width - pad.right, y);
+        ctx.stroke();
+        ctx.fillText(val.toFixed(1), pad.left - 10, y);
+      }
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      for (let i = 0; i <= 5; i += 1) {
+        const t = i / 5;
+        const x = pad.left + t * (width - pad.left - pad.right);
+        const val = xMin + t * (xMax - xMin);
+        ctx.beginPath();
+        ctx.moveTo(x, pad.top);
+        ctx.lineTo(x, height - pad.bottom);
+        ctx.stroke();
+        const label = chartMode === "k" ? val.toFixed(0) : val.toFixed(4);
+        ctx.fillText(label, x, height - pad.bottom + 12);
+      }
+
+      ctx.strokeStyle = "#17211d";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, pad.top);
+      ctx.lineTo(pad.left, height - pad.bottom);
+      ctx.lineTo(width - pad.right, height - pad.bottom);
+      ctx.stroke();
+
+      ctx.save();
+      ctx.fillStyle = "#17211d";
+      ctx.font = "13px Microsoft YaHei, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(xLabel, (pad.left + width - pad.right) / 2, height - 22);
+      ctx.translate(20, (pad.top + height - pad.bottom) / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText(yLabel, 0, 0);
+      ctx.restore();
+
+      ctx.strokeStyle = "#0f8f68";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      curve.forEach((point, index) => {
+        const x = chartMode === "k" ? point.T : point.invT;
+        const y = chartMode === "k" ? Math.log10(point.k) : point.lnK;
+        const px = xToPx(x);
+        const py = yToPx(y);
+        if (index === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+
+      table.forEach((row) => {
+        const x = chartMode === "k" ? row.T : row.invT;
+        const y = chartMode === "k" ? Math.log10(row.k) : row.lnK;
+        ctx.fillStyle = row.isCurrent ? "#e26d2d" : "#0f9db6";
+        ctx.beginPath();
+        ctx.arc(xToPx(x), yToPx(y), row.isCurrent ? 6 : 4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.fillStyle = "#e26d2d";
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(xToPx(currentPoint.x), yToPx(currentPoint.y), 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    function makeTableRows(withNoise) {
+      const { T, Ea, A } = getParams();
+      const selected = new Set(sampleTemps);
+      selected.add(T);
+      const error = Number(noise.value);
+      return Array.from(selected)
+        .sort((a, b) => a - b)
+        .map((sampleT) => {
+          const pureK = arrhenius(sampleT, Ea, A);
+          const multiplier = withNoise && error ? 1 + (Math.random() * 2 - 1) * error : 1;
+          const k = pureK * multiplier;
+          return {
+            T: sampleT,
+            invT: 1 / sampleT,
+            k,
+            lnK: Math.log(k),
+            isCurrent: sampleT === T
+          };
+        });
+    }
+
+    function renderTable() {
+      if (!tableRows.length) tableRows = makeTableRows(false);
+      dataBody.innerHTML = tableRows.map((row) => `
+        <tr class="${row.isCurrent ? "highlight" : ""}">
+          <td>${row.T}</td>
+          <td>${row.invT.toFixed(6)}</td>
+          <td>${formatSci(row.k)}</td>
+          <td>${formatLn(row.lnK)}</td>
+        </tr>
+      `).join("");
+    }
+
+    function resetSimulation() {
+      reactionStart = performance.now();
+    }
+
+    function updateSimulation(now) {
+      const { T, Ea, A } = getParams();
+      const k = arrhenius(T, Ea, A);
+      const displayK = Math.min(Math.max(k, 0.0001), 1.8);
+      const elapsed = (now - reactionStart) / 1000;
+      const conversion = 1 - Math.exp(-displayK * elapsed);
+      const percent = Math.min(conversion * 100, 100);
+
+      progress.style.width = `${percent}%`;
+      liquid.style.height = `${Math.max(15, 62 - percent * 0.42)}%`;
+      liquid.style.background = `linear-gradient(180deg, rgba(15, 157, 182, ${0.28 + percent / 300}), rgba(226, 109, 45, ${0.22 + percent / 180}))`;
+      timeReadout.textContent = `${elapsed.toFixed(1)} s`;
+      conversionReadout.textContent = `${percent.toFixed(1)}%`;
+
+      const bubbleRate = Math.min(1.8, Math.max(0.35, Math.log10(k + 1) + 0.55));
+      bubbles.forEach((bubble, index) => {
+        bubble.style.animationDuration = `${Math.max(0.9, 3.2 - bubbleRate - index * 0.18)}s`;
+      });
+
+      if (percent > 99.5) {
+        reactionStart = performance.now();
+      }
+
+      requestAnimationFrame(updateSimulation);
+    }
+
+    function updateAll(options = {}) {
+      syncLabels();
+      if (options.regenerateTable || !tableRows.length) {
+        tableRows = makeTableRows(Boolean(options.withNoise));
+      } else {
+        tableRows = makeTableRows(false);
+      }
+      renderTable();
+      drawChart();
+    }
+
+    [temp, ea, factor, noise].forEach((control) => {
+      control.addEventListener("input", () => {
+        updateAll();
+      });
+    });
+
+    modeK.addEventListener("click", () => {
+      chartMode = "k";
+      modeK.classList.add("active");
+      modeLn.classList.remove("active");
+      drawChart();
+    });
+
+    modeLn.addEventListener("click", () => {
+      chartMode = "ln";
+      modeLn.classList.add("active");
+      modeK.classList.remove("active");
+      drawChart();
+    });
+
+    runExperiment.addEventListener("click", () => {
+      updateAll({ regenerateTable: true, withNoise: true });
+    });
+
+    resetReaction.addEventListener("click", resetSimulation);
+
+    window.addEventListener("resize", drawChart);
+
+    updateAll({ regenerateTable: true });
+    requestAnimationFrame(updateSimulation);
+  </script>
+</body>
+</html>
