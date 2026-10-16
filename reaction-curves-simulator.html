@@ -1,0 +1,1042 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>反应浓度-时间曲线动画模拟</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #162033;
+      --muted: #5d677a;
+      --line: #d9e0ea;
+      --soft: #edf2f8;
+      --accent: #0b63ce;
+      --accent-2: #0f9f6e;
+      --accent-3: #e14d2a;
+      --accent-4: #805ad5;
+      --shadow: 0 14px 38px rgba(20, 32, 51, 0.08);
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(180deg, #ffffff 0%, var(--bg) 54%, #eef3f8 100%);
+      color: var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", system-ui, sans-serif;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1220px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 22px 0 28px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0 0 5px;
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(86px, 1fr));
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 4px;
+      border-radius: var(--radius);
+      gap: 4px;
+    }
+
+    .segmented button,
+    .btn {
+      border: 0;
+      border-radius: 6px;
+      min-height: 38px;
+      padding: 0 13px;
+      cursor: pointer;
+      color: var(--ink);
+      background: transparent;
+      transition: background 140ms ease, color 140ms ease, transform 140ms ease;
+      white-space: nowrap;
+    }
+
+    .segmented button:hover,
+    .btn:hover {
+      background: var(--soft);
+    }
+
+    .segmented button.active,
+    .btn.primary {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .btn.primary:hover {
+      background: #0757b7;
+    }
+
+    .btn:active,
+    .segmented button:active {
+      transform: translateY(1px);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.75fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .panel {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .graph-panel {
+      min-width: 0;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      min-height: 360px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.92), rgba(250,252,255,0.92)),
+        radial-gradient(circle at 16% 10%, rgba(11,99,206,0.10), transparent 30%),
+        radial-gradient(circle at 85% 18%, rgba(15,159,110,0.10), transparent 26%);
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .readout {
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      max-width: calc(100% - 28px);
+      pointer-events: none;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(217, 224, 234, 0.9);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 13px;
+      box-shadow: 0 8px 22px rgba(20, 32, 51, 0.07);
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+
+    .status {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--line);
+      border-top: 1px solid var(--line);
+    }
+
+    .status-cell {
+      background: #ffffff;
+      padding: 14px;
+      min-width: 0;
+    }
+
+    .status-label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status-value {
+      margin-top: 6px;
+      font-size: clamp(22px, 2.8vw, 34px);
+      line-height: 1;
+      font-weight: 750;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .controls {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .reaction-card {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfdff;
+    }
+
+    .reaction-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .reaction-title h2 {
+      margin: 0;
+      font-size: 17px;
+    }
+
+    .formula {
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      font-size: 19px;
+      font-weight: 700;
+      text-align: center;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+      margin: 10px 0 0;
+    }
+
+    .sliders {
+      display: grid;
+      gap: 13px;
+    }
+
+    .control-row {
+      display: grid;
+      grid-template-columns: 84px 1fr 52px;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .control-row label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .number {
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      font-size: 13px;
+    }
+
+    .mini-scene {
+      height: 136px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .molecule {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      opacity: 0.9;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.76);
+    }
+
+    .flow {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .species-bars {
+      display: grid;
+      gap: 10px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 26px 1fr 48px;
+      align-items: center;
+      gap: 9px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .bar-track {
+      height: 11px;
+      background: var(--soft);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: inherit;
+      width: 0%;
+      transition: width 90ms linear;
+    }
+
+    .equations {
+      padding: 14px 16px 16px;
+      border-top: 1px solid var(--line);
+      background: #fbfdff;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .equations strong {
+      color: var(--ink);
+    }
+
+    .eq-list {
+      margin: 8px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 3px;
+      font-family: Consolas, "SFMono-Regular", Menlo, monospace;
+      color: #2d3748;
+      overflow-x: auto;
+    }
+
+    @media (max-width: 920px) {
+      .topbar,
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        align-items: stretch;
+      }
+
+      .toolbar {
+        justify-content: flex-start;
+      }
+
+      .segmented {
+        width: 100%;
+      }
+
+      .layout {
+        display: grid;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .app {
+        width: min(100vw - 18px, 1220px);
+        padding-top: 14px;
+      }
+
+      .toolbar {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+
+      .segmented {
+        grid-template-columns: 1fr;
+      }
+
+      .canvas-wrap {
+        aspect-ratio: 1 / 1.08;
+        min-height: 380px;
+      }
+
+      .status {
+        grid-template-columns: 1fr;
+      }
+
+      .control-row {
+        grid-template-columns: 72px 1fr 44px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="topbar" aria-labelledby="title">
+      <div>
+        <h1 id="title">反应浓度-时间曲线动画模拟</h1>
+        <p class="subtitle">连续反应、平行反应、可逆反应的一阶动力学模拟，曲线会随参数实时重算。</p>
+      </div>
+      <div class="toolbar">
+        <div class="segmented" role="tablist" aria-label="选择反应类型">
+          <button class="active" data-model="series" role="tab" aria-selected="true">连续反应</button>
+          <button data-model="parallel" role="tab" aria-selected="false">平行反应</button>
+          <button data-model="reversible" role="tab" aria-selected="false">可逆反应</button>
+        </div>
+        <button class="btn primary" id="playButton" type="button">暂停</button>
+        <button class="btn" id="resetButton" type="button">重置</button>
+      </div>
+    </section>
+
+    <section class="layout">
+      <article class="panel graph-panel">
+        <div class="canvas-wrap">
+          <canvas id="graph" aria-label="浓度随时间变化曲线"></canvas>
+          <div class="readout" id="legend"></div>
+        </div>
+        <div class="status" id="status"></div>
+        <div class="equations">
+          <strong>微分方程</strong>
+          <ul class="eq-list" id="equations"></ul>
+        </div>
+      </article>
+
+      <aside class="panel controls">
+        <div class="reaction-card">
+          <div class="reaction-title">
+            <h2 id="modelName">连续反应</h2>
+            <span class="pill" id="timePill">t = 0.00 s</span>
+          </div>
+          <div class="formula" id="formula">A → B → C</div>
+          <p class="note" id="description">中间产物 B 会先升高后降低，最终逐渐转化为 C。</p>
+        </div>
+
+        <div class="mini-scene" id="miniScene" aria-hidden="true">
+          <svg class="flow" id="flowSvg" viewBox="0 0 320 136" preserveAspectRatio="none"></svg>
+        </div>
+
+        <div class="species-bars" id="bars"></div>
+
+        <div class="sliders">
+          <div class="control-row">
+            <label for="k1">k₁</label>
+            <input id="k1" type="range" min="0.05" max="2.4" step="0.01" value="0.8">
+            <span class="number" id="k1Value">0.80</span>
+          </div>
+          <div class="control-row">
+            <label for="k2">k₂</label>
+            <input id="k2" type="range" min="0.05" max="2.4" step="0.01" value="0.42">
+            <span class="number" id="k2Value">0.42</span>
+          </div>
+          <div class="control-row">
+            <label for="a0">A₀</label>
+            <input id="a0" type="range" min="0.2" max="2.0" step="0.01" value="1">
+            <span class="number" id="a0Value">1.00</span>
+          </div>
+          <div class="control-row">
+            <label for="duration">时长</label>
+            <input id="duration" type="range" min="4" max="24" step="0.5" value="12">
+            <span class="number" id="durationValue">12.0s</span>
+          </div>
+          <div class="control-row">
+            <label for="speed">速度</label>
+            <input id="speed" type="range" min="0.25" max="3" step="0.05" value="1">
+            <span class="number" id="speedValue">1.00×</span>
+          </div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.querySelector("#graph");
+    const ctx = canvas.getContext("2d");
+    const buttons = [...document.querySelectorAll("[data-model]")];
+    const playButton = document.querySelector("#playButton");
+    const resetButton = document.querySelector("#resetButton");
+    const legend = document.querySelector("#legend");
+    const status = document.querySelector("#status");
+    const equations = document.querySelector("#equations");
+    const modelName = document.querySelector("#modelName");
+    const formula = document.querySelector("#formula");
+    const description = document.querySelector("#description");
+    const timePill = document.querySelector("#timePill");
+    const miniScene = document.querySelector("#miniScene");
+    const flowSvg = document.querySelector("#flowSvg");
+    const bars = document.querySelector("#bars");
+
+    const inputs = {
+      k1: document.querySelector("#k1"),
+      k2: document.querySelector("#k2"),
+      a0: document.querySelector("#a0"),
+      duration: document.querySelector("#duration"),
+      speed: document.querySelector("#speed")
+    };
+
+    const values = {
+      k1: document.querySelector("#k1Value"),
+      k2: document.querySelector("#k2Value"),
+      a0: document.querySelector("#a0Value"),
+      duration: document.querySelector("#durationValue"),
+      speed: document.querySelector("#speedValue")
+    };
+
+    const colors = {
+      A: "#0b63ce",
+      B: "#0f9f6e",
+      C: "#e14d2a"
+    };
+
+    const models = {
+      series: {
+        name: "连续反应",
+        formula: "A → B → C",
+        description: "中间产物 B 会先升高后降低，最终逐渐转化为 C。",
+        species: ["A", "B", "C"],
+        equations: [
+          "d[A]/dt = -k1[A]",
+          "d[B]/dt = k1[A] - k2[B]",
+          "d[C]/dt = k2[B]"
+        ],
+        derivative: ([a, b, c], k1, k2) => [-k1 * a, k1 * a - k2 * b, k2 * b],
+        initial: a0 => [a0, 0, 0],
+        flow: "series"
+      },
+      parallel: {
+        name: "平行反应",
+        formula: "A → B，A → C",
+        description: "反应物 A 同时走向 B 与 C，两条路径的速率常数决定产物分配。",
+        species: ["A", "B", "C"],
+        equations: [
+          "d[A]/dt = -(k1 + k2)[A]",
+          "d[B]/dt = k1[A]",
+          "d[C]/dt = k2[A]"
+        ],
+        derivative: ([a, b, c], k1, k2) => [-(k1 + k2) * a, k1 * a, k2 * a],
+        initial: a0 => [a0, 0, 0],
+        flow: "parallel"
+      },
+      reversible: {
+        name: "可逆反应",
+        formula: "A ⇌ B",
+        description: "正反应与逆反应同时发生，系统会趋近动态平衡。",
+        species: ["A", "B"],
+        equations: [
+          "d[A]/dt = -k1[A] + k2[B]",
+          "d[B]/dt = k1[A] - k2[B]",
+          "K = [B]eq / [A]eq = k1 / k2"
+        ],
+        derivative: ([a, b], k1, k2) => [-k1 * a + k2 * b, k1 * a - k2 * b],
+        initial: a0 => [a0, 0],
+        flow: "reversible"
+      }
+    };
+
+    const state = {
+      modelKey: "series",
+      running: true,
+      time: 0,
+      lastFrame: performance.now(),
+      points: [],
+      maxY: 1
+    };
+
+    function getParams() {
+      return {
+        k1: Number(inputs.k1.value),
+        k2: Number(inputs.k2.value),
+        a0: Number(inputs.a0.value),
+        duration: Number(inputs.duration.value),
+        speed: Number(inputs.speed.value)
+      };
+    }
+
+    function formatValue(value) {
+      return value.toFixed(value >= 10 ? 1 : 2);
+    }
+
+    function updateValueLabels() {
+      const p = getParams();
+      values.k1.textContent = p.k1.toFixed(2);
+      values.k2.textContent = p.k2.toFixed(2);
+      values.a0.textContent = p.a0.toFixed(2);
+      values.duration.textContent = `${p.duration.toFixed(1)}s`;
+      values.speed.textContent = `${p.speed.toFixed(2)}×`;
+    }
+
+    function rk4Step(y, dt, model, k1, k2) {
+      const kA = model.derivative(y, k1, k2);
+      const yB = y.map((value, i) => value + kA[i] * dt / 2);
+      const kB = model.derivative(yB, k1, k2);
+      const yC = y.map((value, i) => value + kB[i] * dt / 2);
+      const kC = model.derivative(yC, k1, k2);
+      const yD = y.map((value, i) => value + kC[i] * dt);
+      const kD = model.derivative(yD, k1, k2);
+
+      return y.map((value, i) => {
+        const next = value + (dt / 6) * (kA[i] + 2 * kB[i] + 2 * kC[i] + kD[i]);
+        return Math.max(0, next);
+      });
+    }
+
+    function computePoints() {
+      const p = getParams();
+      const model = models[state.modelKey];
+      const steps = 520;
+      const dt = p.duration / steps;
+      let y = model.initial(p.a0);
+      const points = [{ time: 0, values: y.slice() }];
+
+      for (let i = 1; i <= steps; i++) {
+        y = rk4Step(y, dt, model, p.k1, p.k2);
+        points.push({ time: i * dt, values: y.slice() });
+      }
+
+      state.points = points;
+      state.maxY = Math.max(p.a0, ...points.flatMap(point => point.values)) * 1.08;
+      state.time = Math.min(state.time, p.duration);
+      draw();
+      updateSidePanel();
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const ratio = window.devicePixelRatio || 1;
+      const width = Math.max(320, Math.round(rect.width * ratio));
+      const height = Math.max(280, Math.round(rect.height * ratio));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      draw();
+    }
+
+    function plotArea() {
+      const w = canvas.width;
+      const h = canvas.height;
+      const mobile = w < 720;
+      return {
+        left: mobile ? 58 : 72,
+        right: mobile ? 24 : 34,
+        top: mobile ? 82 : 76,
+        bottom: mobile ? 58 : 62,
+        width: 0,
+        height: 0
+      };
+    }
+
+    function getPointAtTime(time) {
+      const points = state.points;
+      if (!points.length) return null;
+      if (time <= 0) return points[0];
+      const last = points[points.length - 1];
+      if (time >= last.time) return last;
+
+      const duration = last.time;
+      const index = Math.min(points.length - 2, Math.floor((time / duration) * (points.length - 1)));
+      const a = points[index];
+      const b = points[index + 1];
+      const fraction = (time - a.time) / (b.time - a.time);
+      return {
+        time,
+        values: a.values.map((value, i) => value + (b.values[i] - value) * fraction)
+      };
+    }
+
+    function drawGrid(area, duration) {
+      ctx.save();
+      ctx.strokeStyle = "#e4eaf2";
+      ctx.lineWidth = 1;
+      ctx.fillStyle = "#5d677a";
+      ctx.font = `${12 * (window.devicePixelRatio || 1)}px "Segoe UI", sans-serif`;
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+
+      const ratio = window.devicePixelRatio || 1;
+      const yTicks = 5;
+      for (let i = 0; i <= yTicks; i++) {
+        const y = area.top + area.height * i / yTicks;
+        const value = state.maxY * (1 - i / yTicks);
+        ctx.beginPath();
+        ctx.moveTo(area.left, y);
+        ctx.lineTo(area.left + area.width, y);
+        ctx.stroke();
+        ctx.fillText(value.toFixed(2), area.left - 10 * ratio, y);
+      }
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      const xTicks = 6;
+      for (let i = 0; i <= xTicks; i++) {
+        const x = area.left + area.width * i / xTicks;
+        const value = duration * i / xTicks;
+        ctx.beginPath();
+        ctx.moveTo(x, area.top);
+        ctx.lineTo(x, area.top + area.height);
+        ctx.stroke();
+        ctx.fillText(value.toFixed(1), x, area.top + area.height + 12 * ratio);
+      }
+
+      ctx.strokeStyle = "#98a4b8";
+      ctx.lineWidth = 1.25 * ratio;
+      ctx.beginPath();
+      ctx.moveTo(area.left, area.top);
+      ctx.lineTo(area.left, area.top + area.height);
+      ctx.lineTo(area.left + area.width, area.top + area.height);
+      ctx.stroke();
+
+      ctx.fillStyle = "#344054";
+      ctx.textAlign = "center";
+      ctx.fillText("时间 t / s", area.left + area.width / 2, area.top + area.height + 34 * ratio);
+      ctx.save();
+      ctx.translate(area.left - 45 * ratio, area.top + area.height / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText("浓度", 0, 0);
+      ctx.restore();
+      ctx.restore();
+    }
+
+    function drawCurve(speciesIndex, color, area, duration) {
+      const points = state.points;
+      if (!points.length) return;
+      const ratio = window.devicePixelRatio || 1;
+
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3 * ratio;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.beginPath();
+
+      points.forEach((point, index) => {
+        const x = area.left + (point.time / duration) * area.width;
+        const y = area.top + area.height - (point.values[speciesIndex] / state.maxY) * area.height;
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawMarker(point, area, duration, model) {
+      if (!point) return;
+      const ratio = window.devicePixelRatio || 1;
+      const x = area.left + (point.time / duration) * area.width;
+
+      ctx.save();
+      ctx.strokeStyle = "rgba(22, 32, 51, 0.45)";
+      ctx.lineWidth = 1.5 * ratio;
+      ctx.setLineDash([5 * ratio, 6 * ratio]);
+      ctx.beginPath();
+      ctx.moveTo(x, area.top);
+      ctx.lineTo(x, area.top + area.height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      model.species.forEach((species, index) => {
+        const y = area.top + area.height - (point.values[index] / state.maxY) * area.height;
+        ctx.fillStyle = colors[species];
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 3 * ratio;
+        ctx.beginPath();
+        ctx.arc(x, y, 5.5 * ratio, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+
+    function draw() {
+      if (!state.points.length) return;
+      const ratio = window.devicePixelRatio || 1;
+      const p = getParams();
+      const model = models[state.modelKey];
+      const area = plotArea();
+      area.width = canvas.width - area.left - area.right;
+      area.height = canvas.height - area.top - area.bottom;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, "rgba(246, 249, 253, 0.95)");
+      gradient.addColorStop(1, "rgba(255, 255, 255, 0.95)");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = "#162033";
+      ctx.font = `${16 * ratio}px "Microsoft YaHei", "Segoe UI", sans-serif`;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText(`${model.name}：${model.formula}`, 24 * ratio, 22 * ratio);
+
+      drawGrid(area, p.duration);
+      model.species.forEach((species, index) => drawCurve(index, colors[species], area, p.duration));
+      drawMarker(getPointAtTime(state.time), area, p.duration, model);
+      ctx.restore();
+    }
+
+    function renderLegend() {
+      const model = models[state.modelKey];
+      legend.innerHTML = model.species.map(species => `
+        <span class="pill" style="color:${colors[species]}">
+          <span class="dot"></span>
+          ${species}
+        </span>
+      `).join("");
+    }
+
+    function renderEquations() {
+      const model = models[state.modelKey];
+      equations.innerHTML = model.equations.map(eq => `<li>${eq}</li>`).join("");
+    }
+
+    function renderStatus(point) {
+      const model = models[state.modelKey];
+      status.innerHTML = model.species.map((species, index) => `
+        <div class="status-cell">
+          <div class="status-label" style="color:${colors[species]}">
+            <span class="dot"></span>
+            <span>[${species}]</span>
+          </div>
+          <div class="status-value">${formatValue(point.values[index])}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderBars(point) {
+      const model = models[state.modelKey];
+      bars.innerHTML = model.species.map((species, index) => {
+        const pct = Math.max(0, Math.min(100, point.values[index] / state.maxY * 100));
+        return `
+          <div class="bar-row">
+            <strong style="color:${colors[species]}">${species}</strong>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${pct}%; background:${colors[species]}"></div>
+            </div>
+            <span class="number">${formatValue(point.values[index])}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function drawFlow() {
+      const model = models[state.modelKey];
+      const common = `
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#7a8798"></path>
+          </marker>
+        </defs>
+      `;
+
+      if (model.flow === "series") {
+        flowSvg.innerHTML = common + `
+          <text x="47" y="73" fill="${colors.A}" font-size="18" font-weight="700">A</text>
+          <text x="151" y="73" fill="${colors.B}" font-size="18" font-weight="700">B</text>
+          <text x="255" y="73" fill="${colors.C}" font-size="18" font-weight="700">C</text>
+          <path d="M72 68 H130" stroke="#7a8798" stroke-width="2.5" marker-end="url(#arrow)"></path>
+          <path d="M176 68 H234" stroke="#7a8798" stroke-width="2.5" marker-end="url(#arrow)"></path>
+          <text x="94" y="55" fill="#5d677a" font-size="12">k₁</text>
+          <text x="199" y="55" fill="#5d677a" font-size="12">k₂</text>
+        `;
+      } else if (model.flow === "parallel") {
+        flowSvg.innerHTML = common + `
+          <text x="47" y="73" fill="${colors.A}" font-size="18" font-weight="700">A</text>
+          <text x="231" y="44" fill="${colors.B}" font-size="18" font-weight="700">B</text>
+          <text x="231" y="106" fill="${colors.C}" font-size="18" font-weight="700">C</text>
+          <path d="M74 64 C128 20, 176 28, 214 39" stroke="#7a8798" stroke-width="2.5" fill="none" marker-end="url(#arrow)"></path>
+          <path d="M74 72 C128 116, 176 106, 214 96" stroke="#7a8798" stroke-width="2.5" fill="none" marker-end="url(#arrow)"></path>
+          <text x="135" y="33" fill="#5d677a" font-size="12">k₁</text>
+          <text x="135" y="113" fill="#5d677a" font-size="12">k₂</text>
+        `;
+      } else {
+        flowSvg.innerHTML = common + `
+          <text x="72" y="73" fill="${colors.A}" font-size="18" font-weight="700">A</text>
+          <text x="224" y="73" fill="${colors.B}" font-size="18" font-weight="700">B</text>
+          <path d="M103 58 H205" stroke="#7a8798" stroke-width="2.5" marker-end="url(#arrow)"></path>
+          <path d="M205 78 H103" stroke="#7a8798" stroke-width="2.5" marker-end="url(#arrow)"></path>
+          <text x="148" y="47" fill="#5d677a" font-size="12">k₁</text>
+          <text x="148" y="96" fill="#5d677a" font-size="12">k₂</text>
+        `;
+      }
+    }
+
+    function updateMolecules(point) {
+      const model = models[state.modelKey];
+      const oldMolecules = [...miniScene.querySelectorAll(".molecule")];
+      oldMolecules.forEach(node => node.remove());
+
+      const zones = {
+        A: { x: 16, y: 51, w: 66, h: 50 },
+        B: model.flow === "parallel" ? { x: 208, y: 22, w: 58, h: 42 } : { x: 126, y: 45, w: 70, h: 50 },
+        C: model.flow === "parallel" ? { x: 208, y: 76, w: 58, h: 42 } : { x: 232, y: 45, w: 58, h: 50 }
+      };
+
+      if (model.flow === "reversible") {
+        zones.A = { x: 44, y: 45, w: 74, h: 50 };
+        zones.B = { x: 202, y: 45, w: 74, h: 50 };
+      }
+
+      const seed = Math.floor(state.time * 10);
+      model.species.forEach((species, index) => {
+        const concentration = point.values[index] || 0;
+        const count = Math.min(18, Math.round((concentration / state.maxY) * 20));
+        const zone = zones[species];
+
+        for (let i = 0; i < count; i++) {
+          const node = document.createElement("span");
+          const wave = Math.sin((seed + i * 5.7) * 0.37);
+          const drift = Math.cos((seed + i * 4.9) * 0.29);
+          const col = i % 6;
+          const row = Math.floor(i / 6);
+          const x = zone.x + 11 + col * 9 + wave * 3;
+          const y = zone.y + 12 + row * 13 + drift * 3;
+          node.className = "molecule";
+          node.style.left = `${Math.max(8, Math.min(312, x)) / 320 * 100}%`;
+          node.style.top = `${Math.max(8, Math.min(128, y)) / 136 * 100}%`;
+          node.style.background = colors[species];
+          miniScene.appendChild(node);
+        }
+      });
+    }
+
+    function updateSidePanel() {
+      const p = getParams();
+      const point = getPointAtTime(state.time) || { values: [] };
+      timePill.textContent = `t = ${state.time.toFixed(2)} s`;
+      renderStatus(point);
+      renderBars(point);
+      updateMolecules(point);
+      if (state.time >= p.duration && state.running) {
+        state.running = false;
+        playButton.textContent = "播放";
+      }
+    }
+
+    function applyModel() {
+      const model = models[state.modelKey];
+      modelName.textContent = model.name;
+      formula.textContent = model.formula;
+      description.textContent = model.description;
+      renderLegend();
+      renderEquations();
+      drawFlow();
+      computePoints();
+    }
+
+    function handleInputChange() {
+      updateValueLabels();
+      computePoints();
+    }
+
+    buttons.forEach(button => {
+      button.addEventListener("click", () => {
+        state.modelKey = button.dataset.model;
+        buttons.forEach(item => {
+          item.classList.toggle("active", item === button);
+          item.setAttribute("aria-selected", String(item === button));
+        });
+        state.time = 0;
+        state.running = true;
+        playButton.textContent = "暂停";
+        applyModel();
+      });
+    });
+
+    Object.values(inputs).forEach(input => input.addEventListener("input", handleInputChange));
+
+    playButton.addEventListener("click", () => {
+      const p = getParams();
+      if (state.time >= p.duration) state.time = 0;
+      state.running = !state.running;
+      state.lastFrame = performance.now();
+      playButton.textContent = state.running ? "暂停" : "播放";
+      updateSidePanel();
+      draw();
+    });
+
+    resetButton.addEventListener("click", () => {
+      state.time = 0;
+      state.running = true;
+      state.lastFrame = performance.now();
+      playButton.textContent = "暂停";
+      updateSidePanel();
+      draw();
+    });
+
+    function tick(now) {
+      const p = getParams();
+      const dt = Math.min(0.08, (now - state.lastFrame) / 1000) * p.speed;
+      state.lastFrame = now;
+
+      if (state.running) {
+        state.time = Math.min(p.duration, state.time + dt);
+        draw();
+        updateSidePanel();
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    updateValueLabels();
+    applyModel();
+    resizeCanvas();
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
