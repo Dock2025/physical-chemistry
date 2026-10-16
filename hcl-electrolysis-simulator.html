@@ -1,0 +1,767 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>电解与极化 | Pt 电极电解 HCl</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #202a2a;
+      --muted: #64716f;
+      --line: #dce3e1;
+      --surface: #fff;
+      --ground: #f3f6f5;
+      --teal: #008878;
+      --teal-light: #e5f5ef;
+      --lime: #8e9d13;
+      --red: #c7545e;
+      --blue: #397dba;
+      --mono: "Cascadia Mono", Consolas, monospace;
+      font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+      font-size: 14px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--ground); color: var(--ink); }
+    button, input, select { font: inherit; }
+    button, select, input[type="checkbox"], input[type="range"] { cursor: pointer; }
+    button { color: inherit; }
+    button, select, input[type="number"] { border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+    button { min-height: 38px; padding: 8px 13px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+    button:hover { background: #f0f6f3; border-color: #adbfb8; }
+    button:disabled { opacity: .45; cursor: default; }
+    :focus-visible { outline: 3px solid #7dc4b6; outline-offset: 3px; }
+    button svg { width: 17px; height: 17px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    sub, sup { font-size: .72em; line-height: 0; position: relative; vertical-align: baseline; }
+    sub { bottom: -.25em; }
+    sup { top: -.45em; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: 25px; font-weight: 700; line-height: 1.3; }
+    h2 { font-size: 16px; font-weight: 650; }
+    h3 { font-size: 14px; font-weight: 650; }
+    a { color: var(--teal); text-underline-offset: 3px; }
+    .app { max-width: 1480px; margin: auto; padding: 24px 28px 26px; }
+    .header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 20px; }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand-icon { width: 43px; height: 43px; border-radius: 7px; background: var(--teal); color: white; padding: 9px; flex-shrink: 0; }
+    .eyebrow { color: var(--teal); font: 600 10px var(--mono); margin-bottom: 5px; }
+    .header-note { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 12px; }
+    .tag { border: 1px solid var(--line); border-radius: 4px; padding: 5px 8px; background: #fff; white-space: nowrap; }
+    .console { border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line); background: #fff; padding: 19px 22px; display: grid; grid-template-columns: minmax(260px, 1.3fr) minmax(190px, .85fr) auto; gap: 30px; align-items: center; }
+    .row { display: flex; align-items: center; gap: 9px; }
+    .between { justify-content: space-between; }
+    .field-title { font-weight: 600; font-size: 13px; }
+    .muted { color: var(--muted); }
+    .small { font-size: 12px; }
+    .number { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    .voltage-entry { display: flex; align-items: center; gap: 7px; }
+    .voltage-entry input { width: 89px; padding: 5px 7px; font: 600 20px var(--mono); color: var(--ink); }
+    input[type="range"] { display: block; width: 100%; accent-color: var(--teal); height: 20px; margin: 11px 0 4px; }
+    .range-ends { display: flex; justify-content: space-between; color: var(--muted); font: 11px var(--mono); }
+    .console-actions { display: grid; gap: 9px; }
+    .primary { color: #fff; border-color: var(--teal); background: var(--teal); font-weight: 600; min-width: 131px; }
+    .primary:hover { color: white; background: #006d61; }
+    .icon-button { width: 38px; padding: 8px; }
+    .icon-button[aria-pressed="true"] { color: var(--teal); background: var(--teal-light); border-color: var(--teal); }
+    select { padding: 5px 7px; color: var(--ink); max-width: 140px; }
+    .stage-nav { display: grid; grid-template-columns: repeat(3, 1fr); background: #fff; margin: 16px 0 0; border-bottom: 1px solid var(--line); }
+    .stage-nav button { border: none; border-radius: 0; text-align: left; justify-content: flex-start; padding: 14px 19px; gap: 12px; border-bottom: 3px solid transparent; }
+    .stage-nav button[aria-pressed="true"] { background: var(--teal-light); border-bottom-color: var(--teal); }
+    .step { font: 13px var(--mono); width: 27px; height: 27px; background: #eef2f0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .stage-nav button[aria-pressed="true"] .step { background: var(--teal); color: white; }
+    .stage-nav strong { display: block; font-size: 13px; font-weight: 650; }
+    .stage-nav small { display: block; color: var(--muted); margin-top: 4px; font-size: 11px; }
+    .workspace { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); background: #fff; }
+    .apparatus, .plot-panel { padding: 20px 22px 18px; min-width: 0; }
+    .plot-panel { border-left: 1px solid var(--line); }
+    .panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 30px; margin-bottom: 8px; }
+    .status { display: inline-flex; align-items: center; gap: 6px; color: var(--teal); font-size: 12px; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    #apparatusSvg { display: block; width: 100%; aspect-ratio: 700 / 435; }
+    #apparatusSvg text { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; }
+    .readings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; border-top: 1px solid var(--line); padding: 13px 0 15px; }
+    .readings .label { color: var(--muted); font-size: 11px; margin-bottom: 6px; }
+    .readings output { font: 600 22px var(--mono); }
+    .unit { color: var(--muted); font-size: 12px; margin-left: 4px; white-space: nowrap; }
+    .reactions { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 13px; line-height: 1.9; }
+    .reaction-role { display: flex; gap: 7px; align-items: center; color: var(--muted); font-size: 11px; }
+    .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+    .dot.chlorine { background: var(--lime); }
+    .plot-tools { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin: 12px 0 6px; }
+    .segmented { display: flex; background: #f1f4f3; border-radius: 5px; padding: 3px; }
+    .segmented button { min-height: 28px; padding: 5px 10px; border: 0; border-radius: 3px; background: transparent; color: var(--muted); font-size: 11px; }
+    .segmented button[aria-pressed="true"] { color: var(--ink); background: #fff; box-shadow: 0 1px 3px #19332c13; }
+    .check { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; }
+    .check input { accent-color: var(--teal); margin: 0; }
+    #chart { display: block; width: 100%; height: 328px; overflow: visible; }
+    .legend { display: flex; align-items: center; gap: 16px; font-size: 11px; color: var(--muted); flex-wrap: wrap; margin: 0 0 13px; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .line-key { width: 16px; height: 0; border-top: 2px solid var(--teal); }
+    .line-key.reference { border-color: #a8b7b1; }
+    .line-key.extension { border-top: 2px dashed var(--red); }
+    .fit-result { background: #f6f8f7; border-left: 3px solid var(--red); padding: 11px 13px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .fit-result strong { font: 600 23px var(--mono); white-space: nowrap; }
+    .fit-result .small { line-height: 1.65; }
+    .fit-status { margin-top: 3px; color: var(--muted); font-size: 11px; min-height: 17px; }
+    .plot-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 11px; flex-wrap: wrap; }
+    .plot-actions button { min-height: 32px; padding: 6px 10px; font-size: 12px; }
+    .polarization { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; border-top: 1px solid var(--line); background: #fff; padding: 20px 22px; }
+    .balance-bar { display: flex; width: 100%; height: 14px; border-radius: 3px; overflow: hidden; background: #edf1ef; margin: 15px 0 12px; }
+    .balance-bar span { min-width: 0; }
+    #backBar { background: var(--red); }
+    #etaBar { background: #dbb747; }
+    #ohmicBar { background: var(--teal); }
+    .balance-values { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .balance-values b { color: var(--ink); font-family: var(--mono); font-weight: 600; }
+    .balance-values .swatch { width: 7px; height: 7px; display: inline-block; margin-right: 4px; border-radius: 1px; }
+    .phase-description { line-height: 1.8; font-size: 13px; min-height: 72px; margin-top: 8px; }
+    .back-cell { color: var(--muted); font-size: 11px; margin-top: 8px; line-height: 1.8; }
+    .settings { border-top: 1px solid var(--line); background: #fff; padding: 14px 22px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+    .eta-input { display: flex; align-items: center; gap: 8px; }
+    .eta-input input { width: 110px; margin: 0; }
+    .eta-input output { min-width: 47px; font: 12px var(--mono); }
+    .pressure-caption { font-size: 11px; color: var(--muted); margin-top: 8px; }
+    .notes { padding: 16px 0 0; color: var(--muted); font-size: 12px; line-height: 1.8; }
+    summary { cursor: pointer; color: var(--ink); font-weight: 600; width: fit-content; }
+    .notes-content { padding: 12px 0; max-width: 1040px; display: grid; gap: 9px; }
+    .notes .formula { color: var(--ink); font-family: var(--mono); overflow-wrap: anywhere; line-height: 2; }
+    .measurements { border-top: 1px solid var(--line); padding: 12px 22px 16px; background: #fff; }
+    .table-scroll { overflow: auto; max-height: 210px; margin-top: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+    th, td { padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th { color: var(--muted); font-weight: 500; background: #f6f8f7; position: sticky; top: 0; }
+    td { font-family: var(--mono); }
+    td:first-child, th:first-child { text-align: left; }
+    .empty-row { text-align: center !important; font-family: inherit; color: var(--muted); }
+    .notice { min-height: 18px; margin-top: 9px; font-size: 11px; color: var(--muted); }
+    .footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; margin-top: 15px; color: var(--muted); font-size: 11px; }
+    [hidden] { display: none !important; }
+    @media (min-width: 1350px) { #chart { height: 365px; } }
+    @media (max-width: 1050px) {
+      .app { padding: 20px 18px; }
+      .console { grid-template-columns: minmax(210px, 1.2fr) minmax(150px, .8fr); gap: 20px; }
+      .console-actions { grid-column: 1 / -1; display: flex; justify-content: space-between; flex-wrap: wrap; }
+      .header-note { gap: 6px; }
+      .workspace { grid-template-columns: 1fr; }
+      .plot-panel { border-left: none; border-top: 1px solid var(--line); }
+      #apparatusSvg { max-width: 740px; margin: auto; }
+      #chart { height: 340px; }
+    }
+    @media (max-width: 600px) {
+      .app { padding: 16px 10px; }
+      .header { align-items: flex-start; gap: 10px; }
+      h1 { font-size: 21px; }
+      .brand { gap: 9px; }
+      .brand-icon { width: 36px; height: 36px; padding: 7px; }
+      .header-note { flex-direction: column; align-items: flex-end; font-size: 10px; }
+      .header-note .tag { padding: 4px 5px; }
+      .console { padding: 15px 14px; grid-template-columns: 1fr; gap: 18px; }
+      .console-actions { grid-column: auto; gap: 12px; }
+      .stage-nav button { padding: 10px 7px; gap: 6px; }
+      .stage-nav .step { width: 20px; height: 20px; font-size: 10px; }
+      .stage-nav strong { font-size: 11px; }
+      .stage-nav small { display: none; }
+      .apparatus, .plot-panel { padding: 15px 12px; }
+      .panel-heading .small { font-size: 10px; }
+      .readings { gap: 8px; }
+      .readings .label { min-height: 30px; }
+      .readings output { font-size: 19px; }
+      .unit { margin-left: 2px; font-size: 10px; }
+      .reactions { gap: 8px; font-size: 11px; }
+      .polarization { grid-template-columns: 1fr; padding: 18px 14px; gap: 22px; }
+      .settings { padding: 14px; gap: 12px; }
+      .balance-values { gap: 12px; font-size: 11px; }
+      #chart { height: 312px; }
+      .fit-result { padding: 9px; gap: 8px; }
+      .fit-result strong { font-size: 21px; }
+      .measurements { padding-inline: 12px; }
+      .legend { gap: 10px; }
+      .fit-status { min-height: 32px; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="brand">
+        <svg class="brand-icon" viewBox="0 0 28 28" aria-hidden="true"><path d="M7 3v14m14-14v14M3 11v12h22V11M4 7h6m8 0h6m-3-3v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <div><div class="eyebrow">ELECTROCHEMISTRY / 02</div><h1>电解与极化</h1></div>
+      </div>
+      <div class="header-note"><span>Pt 电极 · HCl 水溶液</span><span class="tag">25 °C</span><span class="tag">教学模拟</span></div>
+    </header>
+
+    <section class="console" aria-label="电源与电解质控制">
+      <div>
+        <div class="row between">
+          <label class="field-title" for="voltageRange">外加电压 <i>E</i></label>
+          <div class="voltage-entry"><input id="voltageNumber" type="number" min="0" max="3" step=".01" value="0.00" aria-label="外加电压数值，单位伏"><span class="muted">V</span></div>
+        </div>
+        <input id="voltageRange" type="range" min="0" max="3" step=".01" value="0" aria-label="外加电压">
+        <div class="range-ends"><span>0.00 V</span><span>1.50 V</span><span>3.00 V</span></div>
+      </div>
+      <div>
+        <div class="row between"><label class="field-title" for="saltRange">中性盐 · 相对含量</label><output id="saltValue" class="number small">60%</output></div>
+        <input id="saltRange" type="range" min="0" max="100" step="5" value="60">
+        <div class="row between small muted"><span>支持电解质</span><span>R<sub>溶液</sub> = <output id="resistanceValue" class="number">35.3</output> Ω</span></div>
+      </div>
+      <div class="console-actions">
+        <div class="row">
+          <button class="primary" id="scanButton" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path id="scanIcon" d="m8 5 11 7-11 7Z"/></svg><span id="scanLabel">自动升压</span></button>
+          <button class="icon-button" id="freezeButton" type="button" title="暂停动画与升压" aria-label="暂停动画与升压" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path id="freezeIcon" d="M8 5v14M16 5v14"/></svg></button>
+          <button class="icon-button" id="resetButton" type="button" title="重置实验" aria-label="重置实验"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></svg></button>
+        </div>
+        <div class="row between"><label for="scanSpeed" class="muted small">升压速率</label><select id="scanSpeed"><option value=".05">0.05 V/s</option><option value=".10" selected>0.10 V/s</option><option value=".20">0.20 V/s</option></select></div>
+      </div>
+    </section>
+
+    <nav class="stage-nav" aria-label="电解阶段">
+      <button type="button" data-stage="0" aria-pressed="true"><span class="step">01</span><span><strong>微弱电流</strong><small>几乎无气体产生</small></span></button>
+      <button type="button" data-stage="1" aria-pressed="false"><span class="step">02</span><span><strong>极化建立</strong><small>表面产气 · 反电动势增大</small></span></button>
+      <button type="button" data-stage="2" aria-pressed="false"><span class="step">03</span><span><strong>持续电解</strong><small>气泡逸出 · 电流快速增长</small></span></button>
+    </nav>
+
+    <section class="workspace" aria-label="电解实验与电流电压曲线">
+      <section class="apparatus" aria-label="电解装置">
+        <div class="panel-heading"><h2>电解装置</h2><span class="status"><span class="status-dot"></span><span id="apparatusStatus">待升压</span></span></div>
+        <svg id="apparatusSvg" viewBox="0 0 700 435" role="img" aria-labelledby="apparatusTitle apparatusDesc">
+          <title id="apparatusTitle">Pt 电极电解 HCl 的电路与粒子动画</title>
+          <desc id="apparatusDesc">左侧阴极接电源负极，右侧阳极接正极。安培计 G 串联，伏特计 V 并联。当前无可见气泡。</desc>
+          <defs>
+            <linearGradient id="platinum" x1="0" x2="1"><stop offset="0" stop-color="#939fa0"/><stop offset=".4" stop-color="#f6f8f8"/><stop offset="1" stop-color="#859394"/></linearGradient>
+            <clipPath id="liquidClip"><path d="M130 286H570V380Q570 408 542 408H158Q130 408 130 380Z"/></clipPath>
+            <marker id="arrowTeal" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="m0 0 7 3.5L0 7" fill="none" stroke="#008878" stroke-width="1.2"/></marker>
+            <marker id="arrowRed" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="m0 0 7 3.5L0 7" fill="none" stroke="#c7545e" stroke-width="1.2"/></marker>
+          </defs>
+          <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M276 59H130V86M130 142V175H220V244" stroke="#008878" stroke-width="3"/>
+            <path d="M424 59H570V175H480V244" stroke="#c7545e" stroke-width="3"/>
+            <path d="M220 207H324M376 207H480" stroke="#9caaa5" stroke-width="2"/>
+            <path d="M125 254V382Q125 414 157 414H543Q575 414 575 382V254" stroke="#9eaeaa" stroke-width="3"/>
+          </g>
+          <path d="M130 286H570V380Q570 408 542 408H158Q130 408 130 380Z" fill="#eaf5f1"/>
+          <path d="M130 286H570" stroke="#acd2c6" stroke-width="1.5"/>
+          <g id="ionParticles" clip-path="url(#liquidClip)" aria-hidden="true"></g>
+          <g id="polarLayers" opacity="0" aria-hidden="true">
+            <rect x="199" y="289" width="42" height="90" rx="8" fill="#60bfa4" opacity=".2"/>
+            <rect x="459" y="289" width="42" height="90" rx="8" fill="#bdc955" opacity=".25"/>
+          </g>
+          <rect x="212" y="244" width="16" height="134" rx="3" fill="url(#platinum)" stroke="#778786"/>
+          <rect x="472" y="244" width="16" height="134" rx="3" fill="url(#platinum)" stroke="#778786"/>
+          <g id="surfaceGas" aria-hidden="true"></g><g id="bubbles" aria-hidden="true"></g>
+          <g fill="#fff" stroke="#c4d0cb" stroke-width="1.5">
+            <circle cx="130" cy="114" r="28"/><circle cx="350" cy="207" r="26"/>
+          </g>
+          <g text-anchor="middle" fill="#202a2a">
+            <text x="130" y="110" font-size="20" font-style="italic" font-weight="600">G</text>
+            <text id="gMeter" x="130" y="128" font-size="12">0.00 mA</text>
+            <text x="350" y="204" font-size="19" font-style="italic" font-weight="600">V</text>
+            <text id="vMeter" x="350" y="220" font-size="12">0.00 V</text>
+          </g>
+          <rect x="276" y="22" width="148" height="76" rx="7" fill="#233832"/>
+          <g fill="white" text-anchor="middle">
+            <text x="350" y="43" font-size="12" fill="#b6c9c2">可调直流电源</text>
+            <text id="sourceVoltage" x="350" y="72" font-size="24" font-weight="600">0.00 V</text>
+            <text x="287" y="87" font-size="16">−</text><text x="413" y="87" font-size="16">+</text>
+          </g>
+          <g id="electronParticles" aria-hidden="true"></g>
+          <g font-size="13" fill="#64716f" text-anchor="middle">
+            <text x="350" y="124">G 串联 · V 并联</text>
+            <text x="220" y="235" fill="#008878" font-size="15" font-weight="600">− 阴极 / Pt</text>
+            <text x="480" y="235" fill="#af4a53" font-size="15" font-weight="600">+ 阳极 / Pt</text>
+            <text x="170" y="270" fill="#008878" font-size="17">H<tspan dy="4" font-size="11">2</tspan><tspan dy="-4"> (g)</tspan></text>
+            <text x="530" y="270" fill="#7b8910" font-size="17">Cl<tspan dy="4" font-size="11">2</tspan><tspan dy="-4"> (g)</tspan></text>
+            <text x="350" y="432" font-size="13">HCl (aq) + 中性支持电解质</text>
+          </g>
+          <g id="driftArrows" opacity="0">
+            <path d="M334 314H274" stroke="#008878" stroke-width="1.2" marker-end="url(#arrowTeal)"/>
+            <path d="M366 344H426" stroke="#c7545e" stroke-width="1.2" marker-end="url(#arrowRed)"/>
+          </g>
+        </svg>
+        <div class="readings">
+          <div><div class="label">伏特计 · 外加电压</div><output id="voltageReading">0.00</output><span class="unit">V</span></div>
+          <div><div class="label">安培计 · 电流</div><output id="currentReading">0.00</output><span class="unit">mA</span></div>
+          <div><div class="label">表面气体 · p / p<sub>atm</sub></div><output id="pressureReading">≈ 0</output></div>
+        </div>
+        <div class="reactions">
+          <div><div class="reaction-role"><span class="dot"></span>阴极还原 · 析氢</div><div>2 H<sup>+</sup> + 2 e<sup>−</sup> → H<sub>2</sub>(g)</div></div>
+          <div><div class="reaction-role"><span class="dot chlorine"></span>阳极氧化 · 析氯</div><div>2 Cl<sup>−</sup> → Cl<sub>2</sub>(g) + 2 e<sup>−</sup></div></div>
+        </div>
+        <div class="pressure-caption">两极产气的物质的量之比 H<sub>2</sub> : Cl<sub>2</sub> = 1 : 1；粒子与气泡均为示意。</div>
+      </section>
+      <section class="plot-panel" aria-label="电流电压曲线">
+        <div class="panel-heading"><h2><i>I–E</i> 曲线</h2><span class="small muted">准静态测量</span></div>
+        <div class="plot-tools">
+          <div class="segmented" role="group" aria-label="电流量程"><button id="fullScale" aria-pressed="true" type="button">全量程</button><button id="microScale" aria-pressed="false" type="button">微电流</button></div>
+          <div class="row"><label class="check"><input type="checkbox" id="referenceToggle" checked>参考曲线</label><label class="check"><input type="checkbox" id="fitToggle" checked>线性外推</label></div>
+        </div>
+        <svg id="chart" role="img" aria-labelledby="chartTitle chartDesc"><title id="chartTitle">电流 I 随外加电压 E 的变化</title><desc id="chartDesc">低电压时电流极小，经过极化过渡后快速线性增长。直线外推至零电流可得到分解电压。</desc></svg>
+        <div class="legend"><span><i class="line-key reference"></i>模型参考</span><span><i class="dot"></i>采样点</span><span><i class="line-key extension"></i>直线外推</span></div>
+        <div class="fit-result">
+          <div><div class="small">分解电压 <i>E</i><sub>分解</sub> · <span id="fitKind">模型外推</span></div><div class="fit-status" id="fitStatus">尚未采样，显示线性区的理论截距。</div></div>
+          <strong><output id="decompReading">1.360</output><span class="unit">V</span></strong>
+        </div>
+        <div class="plot-actions">
+          <div class="row"><button id="recordButton" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>记录此点</button><span id="sampleCount" class="small muted">0 个点</span></div>
+          <button class="icon-button" id="exportButton" type="button" title="导出测量数据 CSV" aria-label="导出测量数据 CSV" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg></button>
+        </div>
+      </section>
+    </section>
+
+    <section class="polarization" aria-label="极化作用">
+      <div>
+        <div class="panel-heading"><h2>电压分配</h2><span class="small muted"><i>E</i> = <i>E</i><sub>b</sub> + η<sub>总</sub> + <i>IR</i></span></div>
+        <div class="balance-bar" role="img" aria-label="反电动势、超电势和电阻压降占比"><span id="backBar"></span><span id="etaBar"></span><span id="ohmicBar"></span></div>
+        <div class="balance-values">
+          <span><i class="swatch" style="background:#c7545e"></i><i>E</i><sub>b</sub> <b id="backReading">0.000</b> V</span>
+          <span><i class="swatch" style="background:#dbb747"></i>η<sub>总</sub> <b id="etaReading">0.000</b> V</span>
+          <span><i class="swatch" style="background:#008878"></i><i>IR</i> <b id="ohmicReading">0.000</b> V</span>
+        </div>
+        <div class="back-cell">极化形成的原电池：Pt | H<sub>2</sub> | H<sup>+</sup> ∥ Cl<sup>−</sup> | Cl<sub>2</sub> | Pt<br>其电动势阻碍电解；E<sub>b,max</sub> ≈ <span class="number">1.360 V</span>（本模型条件）。</div>
+      </div>
+      <div aria-live="polite" aria-atomic="true">
+        <h2 id="phaseHeading">01 / 低电压：几乎无电流</h2>
+        <p id="phaseDescription" class="phase-description">电压很小时，电流接近零，两极均无可见气体析出。大部分外加电压体现为电极界面的极化。</p>
+        <p class="small muted" id="phasePressure">表面气体量极少，气泡尚未形成。</p>
+      </div>
+    </section>
+    <section class="settings" aria-label="极化对比设置">
+      <label class="check"><input id="etaToggle" type="checkbox">计入额外超电势</label>
+      <div class="eta-input"><input id="etaRange" type="range" min="0" max=".30" step=".01" value=".12" disabled aria-label="线性区等效总超电势"><output id="etaSetting">0.12 V</output></div>
+      <span class="small muted" id="modelRelation">理想近似：E<sub>分解</sub> ≈ E<sub>b,max</sub></span>
+    </section>
+    <details class="measurements">
+      <summary>测量记录 <span id="tableCount" class="muted small">（0）</span></summary>
+      <div class="table-scroll"><table><thead><tr><th>序号</th><th>E / V</th><th>I / mA</th><th>E<sub>b</sub> / V</th><th>p / p<sub>atm</sub></th><th>R / Ω</th></tr></thead><tbody id="dataBody"><tr><td class="empty-row" colspan="6">尚无采样点</td></tr></tbody></table></div>
+      <div class="row between" style="margin-top:10px"><span class="small muted">自动升压每 0.05 V 采样一次。</span><button id="clearButton" type="button" class="small" disabled>清空记录</button></div>
+    </details>
+    <div id="notice" class="notice" role="status"></div>
+
+    <details class="notes">
+      <summary>模型条件与原理</summary>
+      <div class="notes-content">
+        <p>总反应：2 H<sup>+</sup>(aq) + 2 Cl<sup>−</sup>(aq) → H<sub>2</sub>(g) + Cl<sub>2</sub>(g)。本页按指定的析氢、析氯路径作准静态教学模拟；Pt 不消耗。取 25 °C、H<sup>+</sup> 和 Cl<sup>−</sup> 活度为 1，压力参照外界大气压，E<sub>b,max</sub> 取约 1.36 V。</p>
+        <p>少量产物使电极逐渐具有氢电极和氯电极的性质，形成反电动势。界面气体的有效分压越高，反电动势越大；当持续气泡析出时，本模型将其封顶在 E<sub>b,max</sub>。低电压区的界面电压还包含双电层极化的贡献。</p>
+        <p class="formula">E<sub>b</sub> = E° + (RT / 2F) ln[(p<sub>H₂</sub> / p°)(p<sub>Cl₂</sub> / p°) / (a<sub>H⁺</sub>² a<sub>Cl⁻</sub>²)]</p>
+        <p>参考曲线由微电流区、平滑过渡区（图中 2–3）和线性区构成；“2–3”是曲线上的阶段标记，并非 2–3 V。线性区满足 I = (E − E<sub>分解</sub>) / R，直线延长至 I = 0 得到 E<sub>分解</sub>。采到至少 3 个线性区数据点后，用最小二乘法拟合其截距。</p>
+        <p>默认忽略额外超电势，使 E<sub>分解</sub> ≈ E<sub>b,max</sub>。打开对比后，η<sub>总</sub> 是线性区近似的等效值，E<sub>分解</sub> ≈ E<sub>b,max</sub> + η<sub>总</sub>；实际超电势会随电流、电极表面和体系条件变化，外推值也依赖拟合区间。</p>
+        <p>中性盐视为不放电的支持电解质，仅改变电导，不改变本页固定的活度与反应路径。相对含量 s 从 0 到 1 时，取 R = 120 / (1 + 4s) Ω。这是用于对比斜率的示意关系，数值并非具体实验的标定结果。</p>
+        <p>本模型不计算耗尽、析氧竞争、氯气溶解或气体混合反应。气泡逸出采用 p ≈ p<sub>atm</sub> 的教材近似，省略液柱压力、表面张力及成核过饱和；动画中的有效分压和粒子数不是可直接观测的实测数据。降压会直接回到相应准静态状态，不模拟迟滞。</p>
+        <p>参考：<a href="https://doi.org/10.1515/pac-2018-0109" target="_blank" rel="noreferrer">IUPAC 电化学术语与超电势定义</a>；<a href="https://chemed.chem.purdue.edu/genchem/topicreview/bp/ch20/faraday.php" target="_blank" rel="noreferrer">Purdue University · Electrolytic Cells</a>。</p>
+      </div>
+    </details>
+    <footer class="footer"><span>Pt / HCl · 分解电压与电解极化</span><span>离线可用 · 示意模型，非实测数据</span></footer>
+  </main>
+
+  <script id="model">
+    const ElectrolysisModel = (() => {
+      const EB_MAX = 1.36;
+      const RT_F = 8.314462618 * 298.15 / 96485.33212;
+      const clamp = (value, lo, hi) => Math.min(hi, Math.max(lo, value));
+      function conditions(salt = 60, eta = 0) {
+        return { resistance: 120 / (1 + 4 * clamp(salt, 0, 100) / 100),
+          eta: clamp(eta, 0, .3), decomposition: EB_MAX + clamp(eta, 0, .3) };
+      }
+      function lowCurrent(e, d) {
+        const ratio = e / d;
+        return .10 * ratio + .25 * Math.pow(ratio, 8);
+      }
+      function current(voltage, c) {
+        const e = clamp(voltage, 0, 3);
+        const d = c.decomposition;
+        const start = d - .10;
+        const end = d + .16;
+        if (e <= start) return lowCurrent(e, d);
+        const slope = 1000 / c.resistance;
+        if (e >= end) return (e - d) * slope;
+        // A monotone Hermite join connects the microcurrent and ohmic regimes.
+        const span = end - start;
+        const t = (e - start) / span;
+        const y0 = lowCurrent(start, d);
+        const dy0 = (.10 + 2 * Math.pow(start / d, 7)) / d;
+        const y1 = (end - d) * slope;
+        return (2*t*t*t - 3*t*t + 1)*y0 + (t*t*t - 2*t*t + t)*span*dy0
+          + (-2*t*t*t + 3*t*t)*y1 + (t*t*t - t*t)*span*slope;
+      }
+      function at(voltage, c) {
+        const e = clamp(voltage, 0, 3);
+        const i = current(e, c);
+        const eta = c.eta * Math.min(1, e / c.decomposition);
+        const ohmic = i * c.resistance / 1000;
+        const back = clamp(e - eta - ohmic, 0, EB_MAX);
+        const pressure = Math.min(1, Math.exp((back - EB_MAX) / RT_F));
+        const bubbling = e >= c.decomposition + .16 - 1e-9;
+        const stage = e < .45 ? 0 : bubbling ? 2 : 1;
+        return { e, i, eta, ohmic, back, pressure, bubbling, stage,
+          resistance: c.resistance, decomposition: c.decomposition };
+      }
+      function fit(points, c) {
+        const selected = points.filter(point => point.e >= c.decomposition + .22);
+        if (selected.length < 3) return null;
+        const meanE = selected.reduce((s,p) => s + p.e, 0) / selected.length;
+        const meanI = selected.reduce((s,p) => s + p.i, 0) / selected.length;
+        const variance = selected.reduce((s,p) => s + (p.e - meanE)**2, 0);
+        if (variance < 1e-8) return null;
+        const slope = selected.reduce((s,p) => s + (p.e-meanE)*(p.i-meanI), 0) / variance;
+        if (slope <= 0) return null;
+        const intercept = meanI - slope * meanE;
+        return { slope, intercept, voltage: -intercept/slope, count: selected.length };
+      }
+      return { EB_MAX, clamp, conditions, current, at, fit };
+    })();
+  </script>
+  <script id="app">
+    (() => {
+      "use strict";
+      const $ = id => document.getElementById(id);
+      const NS = "http://www.w3.org/2000/svg";
+      const M = ElectrolysisModel;
+      const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+      const state = { voltage: 0, salt: 60, eta: .12, withEta: false, scanning: false,
+        frozen: motionPreference.matches, micro: false, points: [], nextSample: 0,
+        phase: 0, clock: 0, stage: -1, chartWidth: 0, chartHeight: 0, lastFrame: 0, lastPaint: 0 };
+      const c = () => M.conditions(state.salt, state.withEta ? state.eta : 0);
+      const data = () => M.at(state.voltage, c());
+      function svg(tag, attrs, parent, text) {
+        const node = document.createElementNS(NS, tag);
+        Object.entries(attrs || {}).forEach(([key,value]) => node.setAttribute(key, value));
+        if (text != null) node.textContent = text;
+        if (parent) parent.appendChild(node);
+        return node;
+      }
+      function formatPressure(p) {
+        if (p < .000001) return "≈ 0";
+        if (p < .001) return "<0.001";
+        return p.toFixed(3);
+      }
+      function notify(text) { $("notice").textContent = text; }
+      function setScan(active) {
+        state.scanning = active;
+        $("scanLabel").textContent = active ? "暂停升压" : state.voltage >= 3 ? "重新扫描" : "自动升压";
+        $("scanIcon").setAttribute("d", active ? "M8 5v14M16 5v14" : "m8 5 11 7-11 7Z");
+      }
+      function setFrozen(value) {
+        state.frozen = value;
+        $("freezeButton").setAttribute("aria-pressed", String(value));
+        $("freezeButton").setAttribute("aria-label", value ? "恢复动画与升压" : "暂停动画与升压");
+        $("freezeButton").title = value ? "恢复动画与升压" : "暂停动画与升压";
+        $("freezeIcon").setAttribute("d", value ? "m8 5 11 7-11 7Z" : "M8 5v14M16 5v14");
+        render();
+      }
+      function setVoltage(value, stopScan = true) {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) return;
+        state.voltage = M.clamp(parsed, 0, 3);
+        if (stopScan) setScan(false);
+        render();
+      }
+      function record(voltage, update = true) {
+        const p = M.at(voltage, c());
+        const existing = state.points.findIndex(point => Math.abs(point.e - p.e) < .0001);
+        if (existing < 0) state.points.push(p);
+        else state.points[existing] = p;
+        state.points.sort((a,b) => a.e - b.e);
+        if (update) { renderRecords(); render(); }
+      }
+      function renderRecords() {
+        const n = state.points.length;
+        $("sampleCount").textContent = n + " 个点";
+        $("tableCount").textContent = "（" + n + "）";
+        $("exportButton").disabled = n === 0;
+        $("clearButton").disabled = n === 0;
+        const body = $("dataBody");
+        body.replaceChildren();
+        if (!n) {
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
+          td.colSpan = 6; td.className = "empty-row"; td.textContent = "尚无采样点";
+          tr.appendChild(td); body.appendChild(tr);
+          return;
+        }
+        state.points.forEach((p,index) => {
+          const tr = document.createElement("tr");
+          [index+1, p.e.toFixed(3), p.i.toFixed(4), p.back.toFixed(4),
+            p.pressure.toExponential(3), p.resistance.toFixed(2)].forEach(value => {
+              const td = document.createElement("td"); td.textContent = value; tr.appendChild(td);
+            });
+          body.appendChild(tr);
+        });
+      }
+      function changeConditions() {
+        state.points = []; setScan(false); renderRecords(); render();
+        notify("电解质或超电势条件已改变，测量记录已清空。");
+      }
+      const scene = { electrons: [], ions: [], bubbles: [], surface: [] };
+      const leftWire = [[276,59],[130,59],[130,175],[220,175],[220,244]];
+      const rightWire = [[480,244],[480,175],[570,175],[570,59],[424,59]];
+      function pointOnWire(path, progress) {
+        const lengths = path.slice(1).map((p,i) => Math.hypot(p[0]-path[i][0], p[1]-path[i][1]));
+        let distance = progress * lengths.reduce((a,b) => a+b, 0);
+        for (let i=0; i<lengths.length; i++) {
+          if (distance <= lengths[i]) {
+            const t = distance/lengths[i];
+            return [path[i][0]+t*(path[i+1][0]-path[i][0]), path[i][1]+t*(path[i+1][1]-path[i][1])];
+          }
+          distance -= lengths[i];
+        }
+        return path[path.length-1];
+      }
+      function buildScene() {
+        for (let side=0; side<2; side++) {
+          for (let j=0; j<7; j++) {
+            const g = svg("g", {}, $("electronParticles"));
+            svg("circle", {r:4.5, fill:side ? "#c7545e" : "#008878", stroke:"#fff", "stroke-width":1}, g);
+            svg("path", {d:"M-2 0h4", stroke:"#fff", "stroke-width":1}, g);
+            scene.electrons.push({node:g, side, offset:j/7});
+          }
+          for (let j=0; j<14; j++) {
+            const circle = svg("circle", {r:4, fill:side ? "#edf1c8" : "#ccefe4",
+              stroke:side ? "#97a32d" : "#35a184", "stroke-width":1.2}, $("bubbles"));
+            scene.bubbles.push({node:circle, side, offset:j/14, index:j});
+          }
+          for (let j=0; j<8; j++) {
+            const circle = svg("circle", {r:1.8, cx:(side ? 469 : 231) + (j%2 ? 3 : 0),
+              cy:302+j*9, fill:side ? "#b8c350" : "#55b79b"}, $("surfaceGas"));
+            scene.surface.push({node:circle, side, index:j});
+          }
+        }
+        for (let j=0; j<16; j++) {
+          const cathodic = j%2 === 0;
+          const spectator = j >= 8;
+          const group = svg("g", {}, $("ionParticles"));
+          svg("circle", {r:spectator ? 10 : 11, fill:spectator ? "#fff" : cathodic ? "#d2ece2" : "#f0f1ce",
+            stroke:spectator ? "#c6d1cc" : "none", opacity:spectator ? .75 : 1}, group);
+          const text = svg("text", {"text-anchor":"middle", y:4, "font-size":spectator ? 10 : 11,
+            fill:spectator ? "#87948d" : cathodic ? "#007660" : "#768416"}, group);
+          text.textContent = spectator ? (cathodic ? "M" : "X") : (cathodic ? "H" : "Cl");
+          svg("tspan", {"font-size":7, dy:-4}, text, cathodic ? "+" : "−");
+          scene.ions.push({node:group, cathodic, spectator, offset:(j*.137)%1, index:j});
+        }
+      }
+      function animateScene(d) {
+        const intensity = Math.min(1, d.i/50);
+        scene.electrons.forEach(item => {
+          const p = pointOnWire(item.side ? rightWire : leftWire, (state.phase+item.offset)%1);
+          item.node.setAttribute("transform", "translate("+p[0]+","+p[1]+")");
+          const underG = !item.side && Math.abs(p[0]-130)<1 && p[1]>85 && p[1]<143;
+          item.node.setAttribute("opacity", d.i < .01 || underG ? 0 : .25 + intensity*.75);
+        });
+        scene.ions.forEach(item => {
+          const progress = (state.phase*.30+item.offset)%1;
+          const x = item.cathodic ? 448-progress*204 : 252+progress*204;
+          const y = (item.spectator ? 389 : 308+(item.index%4)*22) + Math.sin(state.clock*.7+item.index)*2;
+          item.node.setAttribute("transform", "translate("+x+","+y+")");
+        });
+        const amount = d.stage === 0 ? 0 : Math.min(1, .2 + (d.back/M.EB_MAX)**4*.8);
+        scene.surface.forEach(item => {
+          item.node.setAttribute("opacity", amount * (.55+(item.index%3)*.18));
+          item.node.setAttribute("r", 1.3+amount*1.7);
+        });
+        scene.bubbles.forEach(item => {
+          const p = (state.phase*.7+item.offset)%1;
+          const visibleCount = d.bubbling ? Math.min(14, 3+Math.floor(d.i/4)) : 0;
+          const x = (item.side ? 491 : 208) + (item.index%2 ? 1 : -1)*(9+Math.sin(p*9+item.index)*4);
+          const y = 376 - p*114;
+          item.node.setAttribute("cx", x);
+          item.node.setAttribute("cy", y);
+          item.node.setAttribute("r", 2+p*4);
+          item.node.setAttribute("opacity", item.index<visibleCount ? (p>.82 ? (1-p)/.18 : .85) : 0);
+        });
+        $("polarLayers").setAttribute("opacity", d.back/M.EB_MAX);
+        $("driftArrows").setAttribute("opacity", Math.min(1, d.i/3));
+      }
+      function renderPhase(d) {
+        if (state.stage === d.stage) return;
+        state.stage = d.stage;
+        const headings = ["01 / 低电压：几乎无电流", "02 / 极化建立：产气尚未逸出", "03 / 持续电解：电流迅速增加"];
+        const descriptions = [
+          "电压很小时，电流接近零，两极均无可见气体析出。大部分外加电压体现为电极界面的极化。",
+          "电极表面形成少量氢气、氯气，有效分压低于大气压。两极逐渐构成氢–氯原电池，反电动势升高，抵消大部分外加电压；2–3 段逐步过渡到气泡逸出。",
+          "气体以气泡持续逸出，反电动势达到本模型的最大值。继续升压主要增加电阻压降，电流近似线性上升；将该直线外推至 I = 0 即得分解电压。"
+        ];
+        const pressures = ["表面气体量极少，气泡尚未形成。", "p < p_atm：气体主要留在界面附近。", "p ≈ p_atm：氢气与氯气按 1 : 1 持续析出。"];
+        $("phaseHeading").textContent = headings[d.stage];
+        $("phaseDescription").textContent = descriptions[d.stage];
+        $("phasePressure").innerHTML = pressures[d.stage].replaceAll("p_atm","p<sub>atm</sub>");
+        document.querySelectorAll("[data-stage]").forEach(button => button.setAttribute("aria-pressed", String(Number(button.dataset.stage)===d.stage)));
+        $("apparatusDesc").textContent = "左侧阴极接负极，右侧阳极接正极。G 串联，V 并联。" + descriptions[d.stage];
+      }
+      function render() {
+        const d = data();
+        $("voltageRange").value = state.voltage;
+        if (document.activeElement !== $("voltageNumber")) $("voltageNumber").value = state.voltage.toFixed(2);
+        $("voltageRange").setAttribute("aria-valuetext", state.voltage.toFixed(2)+" 伏");
+        $("voltageReading").textContent = state.voltage.toFixed(2);
+        $("currentReading").textContent = d.i.toFixed(2);
+        $("pressureReading").textContent = formatPressure(d.pressure);
+        $("sourceVoltage").textContent = state.voltage.toFixed(2)+" V";
+        $("gMeter").textContent = d.i.toFixed(2)+" mA";
+        $("vMeter").textContent = state.voltage.toFixed(2)+" V";
+        $("saltValue").textContent = state.salt+"%";
+        $("resistanceValue").textContent = d.resistance.toFixed(1);
+        $("etaSetting").textContent = state.eta.toFixed(2)+" V";
+        $("backReading").textContent = d.back.toFixed(3);
+        $("etaReading").textContent = d.eta.toFixed(3);
+        $("ohmicReading").textContent = d.ohmic.toFixed(3);
+        [["backBar",d.back],["etaBar",d.eta],["ohmicBar",d.ohmic]].forEach(([id,value]) =>
+          $(id).style.width = (state.voltage ? value/state.voltage*100 : 0)+"%");
+        $("apparatusStatus").textContent = state.frozen ? "动画暂停" : state.scanning ? "自动升压中" : d.bubbling ? "气泡持续逸出" : d.stage===1 ? "界面极化中" : state.voltage===0 ? "待升压" : "无可见气泡";
+        $("modelRelation").innerHTML = state.withEta
+          ? "等效近似：E<sub>分解</sub> ≈ E<sub>b,max</sub> + η<sub>总</sub>"
+          : "理想近似：E<sub>分解</sub> ≈ E<sub>b,max</sub>";
+        const fit = M.fit(state.points, c());
+        $("decompReading").textContent = (fit ? fit.voltage : d.decomposition).toFixed(3);
+        $("fitKind").textContent = fit ? "采样拟合" : "模型外推";
+        $("fitStatus").textContent = fit
+          ? fit.count + " 个线性区点 · 斜率 "+fit.slope.toFixed(2)+" mA/V"
+          : state.points.length ? "线性区需至少 3 个不同电压点；当前显示模型截距。" : "尚未采样，显示线性区的理论截距。";
+        renderPhase(d); drawChart(d, fit); animateScene(d);
+      }
+      function drawChart(d, fit) {
+        const chart = $("chart");
+        const w = state.chartWidth || 500;
+        const h = state.chartHeight || 328;
+        chart.setAttribute("viewBox", "0 0 "+w+" "+h);
+        const previous = chart.querySelector(".drawing");
+        if (previous) previous.remove();
+        const g = svg("g", {class:"drawing"}, chart);
+        const pad = {l:53,r:16,t:25,b:88};
+        const pw = w-pad.l-pad.r, ph = h-pad.t-pad.b;
+        const baseY = h-pad.b, maxI = state.micro ? 2 : 80;
+        const x = value => pad.l+value/3*pw;
+        const y = value => baseY-value/maxI*ph;
+        const text = (tx,ty,label,attrs={}) => svg("text", {x:tx,y:ty,fill:"#64716f","font-size":11,
+          "font-family":"Segoe UI, Microsoft YaHei, sans-serif","text-anchor":"middle",...attrs},g,label);
+        const ln = (x1,y1,x2,y2,attrs={}) => svg("line",{x1,y1,x2,y2,stroke:"#e4e9e6","stroke-width":1,...attrs},g);
+        svg("rect", {x:x(d.decomposition-.10),y:pad.t,width:(.26/3*pw),height:ph,fill:"#f4f5e6"},g);
+        for(let j=0;j<=4;j++) {
+          const value = j*maxI/4;
+          ln(pad.l,y(value),w-pad.r,y(value));
+          text(pad.l-10,y(value)+4,state.micro ? value.toFixed(1) : value.toFixed(0),{"text-anchor":"end"});
+        }
+        for(let e=0;e<=3.001;e+=.5) {
+          ln(x(e),pad.t,x(e),baseY);
+          text(x(e),baseY+18,e.toFixed(1));
+        }
+        const clip = svg("clipPath",{id:"plotClip"},svg("defs",{},g));
+        svg("rect",{x:pad.l-1,y:pad.t-1,width:pw+2,height:ph+2},clip);
+        const plot = svg("g",{"clip-path":"url(#plotClip)"},g);
+        if ($("referenceToggle").checked) {
+          let path="";
+          for(let j=0;j<=300;j++){
+            const e=j/100;
+            path+=(j ? "L" : "M")+x(e).toFixed(2)+","+y(M.current(e,c())).toFixed(2);
+          }
+          svg("path",{d:path,fill:"none",stroke:"#98ada4","stroke-width":2.3},plot);
+        }
+        const intercept = fit ? fit.voltage : d.decomposition;
+        if ($("fitToggle").checked) {
+          const slope = fit ? fit.slope : 1000/d.resistance;
+          svg("path",{d:"M"+x(intercept)+","+baseY+"L"+x(3)+","+y((3-intercept)*slope),
+            fill:"none",stroke:"#c7545e","stroke-width":1.8,"stroke-dasharray":"6 4"},plot);
+          ln(x(intercept),baseY+1,x(intercept),baseY+33,{stroke:"#c7545e","stroke-dasharray":"3 3"});
+          const interceptLabel=text(x(intercept),baseY+46,"E",{fill:"#af3d49","font-size":11});
+          svg("tspan",{"font-size":8,dy:3},interceptLabel,"分解");
+          svg("tspan",{"font-size":11,dy:-3},interceptLabel," "+intercept.toFixed(2)+" V");
+        }
+        state.points.forEach(p => svg("circle",{cx:x(p.e),cy:y(p.i),r:2.6,fill:"#008878",stroke:"#fff","stroke-width":.6},plot));
+        ln(pad.l,pad.t,pad.l,baseY,{stroke:"#899b92"});
+        ln(pad.l,baseY,w-pad.r,baseY,{stroke:"#899b92"});
+        if ($("referenceToggle").checked && !state.micro) {
+          const stages = [.45,d.decomposition-.1,d.decomposition+.16];
+          stages.forEach((e,index) => {
+            const cy = y(M.current(e,c()));
+            svg("circle",{cx:x(e),cy,r:3,fill:"#fff",stroke:"#81978a","stroke-width":1.2},g);
+            text(x(e)+(index===1 ? -9 : index===2 ? 11 : 0),cy-12,String(index+1),{fill:"#687b68","font-weight":600});
+          });
+          text(x(d.decomposition+.03),pad.t-9,"2–3 过渡",{fill:"#818e39","font-size":10});
+        }
+        const markerY = Math.max(pad.t, y(d.i));
+        ln(x(d.e),markerY,x(d.e),baseY,{stroke:"#008878","stroke-dasharray":"3 4",opacity:.5});
+        svg("circle",{cx:x(d.e),cy:markerY,r:5,fill:"#008878",stroke:"#fff","stroke-width":2},g);
+        if (d.i > maxI) text(w-pad.r,pad.t-9,"I > "+maxI+" mA",{"text-anchor":"end",fill:"#008878"});
+        const ylabel = text(15,pad.t+ph/2,"电流 I / mA",{fill:"#344840","font-size":12});
+        ylabel.setAttribute("transform","rotate(-90 15 "+(pad.t+ph/2)+")");
+        text(pad.l+pw/2,h-10,"外加电压 E / V",{fill:"#344840","font-size":12});
+      }
+      $("voltageRange").addEventListener("input", e => setVoltage(e.target.value));
+      $("voltageNumber").addEventListener("change", e => {
+        if(e.target.value.trim()==="" || !Number.isFinite(e.target.valueAsNumber)) e.target.value=state.voltage.toFixed(2);
+        else {setVoltage(e.target.valueAsNumber);e.target.value=state.voltage.toFixed(2);}
+      });
+      $("voltageNumber").addEventListener("keydown", e => {if(e.key==="Enter") e.target.blur();});
+      $("saltRange").addEventListener("input", e => {state.salt=Number(e.target.value); changeConditions();});
+      $("etaToggle").addEventListener("change", e => {
+        state.withEta=e.target.checked; $("etaRange").disabled=!state.withEta; changeConditions();
+      });
+      $("etaRange").addEventListener("input", e => {state.eta=Number(e.target.value); changeConditions();});
+      $("scanButton").addEventListener("click", () => {
+        if(state.scanning) {setScan(false);render();return;}
+        if(state.voltage>=3) {state.voltage=0;state.points=[];}
+        setFrozen(false);
+        record(state.voltage,false);
+        state.nextSample=(Math.floor((state.voltage+1e-7)/.05)+1)*.05;
+        setScan(true);renderRecords();render();notify("");
+      });
+      $("freezeButton").addEventListener("click", () => setFrozen(!state.frozen));
+      $("resetButton").addEventListener("click", () => {
+        Object.assign(state,{voltage:0,salt:60,eta:.12,withEta:false,points:[],phase:0,clock:0,micro:false,stage:-1});
+        setScan(false);$("saltRange").value=60;$("etaRange").value=.12;$("etaToggle").checked=false;$("etaRange").disabled=true;
+        $("referenceToggle").checked=true;$("fitToggle").checked=true;$("scanSpeed").value=".10";
+        $("fullScale").setAttribute("aria-pressed","true");$("microScale").setAttribute("aria-pressed","false");
+        setFrozen(motionPreference.matches);renderRecords();render();notify("实验已重置。");
+      });
+      document.querySelectorAll("[data-stage]").forEach(button => button.addEventListener("click", () => {
+        const target=[.30,c().decomposition-.08,2.20][Number(button.dataset.stage)];
+        setVoltage(target);notify("");
+      }));
+      $("recordButton").addEventListener("click", () => {record(state.voltage);notify("已记录 E = "+state.voltage.toFixed(2)+" V 处的数据。");});
+      $("clearButton").addEventListener("click", () => {state.points=[];renderRecords();render();notify("测量记录已清空。");});
+      ["referenceToggle","fitToggle"].forEach(id => $(id).addEventListener("change", render));
+      [["fullScale",false],["microScale",true]].forEach(([id,micro]) => $(id).addEventListener("click", () => {
+        state.micro=micro;$("fullScale").setAttribute("aria-pressed",String(!micro));$("microScale").setAttribute("aria-pressed",String(micro));render();
+      }));
+      $("exportButton").addEventListener("click", () => {
+        const rows=[["E_V","I_mA","Eb_V","eta_V","IR_V","p_over_p_atm","R_ohm","E_decomposition_V","neutral_salt_percent"]];
+        state.points.forEach(p => rows.push([p.e.toFixed(4),p.i.toFixed(6),p.back.toFixed(6),p.eta.toFixed(6),
+          p.ohmic.toFixed(6),p.pressure.toExponential(6),p.resistance.toFixed(6),p.decomposition.toFixed(6),state.salt]));
+        const blob=new Blob(["\uFEFF"+rows.map(row=>row.join(",")).join("\r\n")],{type:"text/csv;charset=utf-8"});
+        const url=URL.createObjectURL(blob),link=document.createElement("a");
+        link.href=url;link.download="hcl-electrolysis-data.csv";document.body.appendChild(link);link.click();link.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),2000);notify("已导出当前条件下的 "+state.points.length+" 个采样点。");
+      });
+      function frame(now) {
+        const dt=state.lastFrame ? Math.min((now-state.lastFrame)/1000,.10) : 0;
+        state.lastFrame=now;
+        if(!state.frozen && !document.hidden) {
+          state.clock+=dt;
+          if(state.scanning) {
+            state.voltage=Math.min(3,state.voltage+dt*Number($("scanSpeed").value));
+            let added=false;
+            while(state.nextSample<=state.voltage+1e-8 && state.nextSample<=3+1e-8) {
+              record(Math.min(3,state.nextSample),false);state.nextSample+=.05;added=true;
+            }
+            if(added) renderRecords();
+            if(state.voltage>=3) {setScan(false);render();notify("扫描完成；已用线性区采样点拟合分解电压。");}
+          }
+          const d=data();
+          state.phase=(state.phase+dt*Math.min(.7,d.i*.015))%1000;
+          if(state.scanning && now-state.lastPaint>65) {render();state.lastPaint=now;}
+          else {animateScene(d);if(state.voltage>=3 && $("voltageReading").textContent!=="3.00") render();}
+        }
+        requestAnimationFrame(frame);
+      }
+      buildScene();
+      const resizeObserver=new ResizeObserver(entries => {
+        const rect=entries[0].contentRect;
+        if(Math.abs(rect.width-state.chartWidth)>.5 || Math.abs(rect.height-state.chartHeight)>.5) {
+          state.chartWidth=rect.width;state.chartHeight=rect.height;render();
+        }
+      });
+      resizeObserver.observe($("chart"));
+      setFrozen(state.frozen);renderRecords();render();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
