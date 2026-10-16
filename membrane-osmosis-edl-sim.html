@@ -1,0 +1,1301 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>膜扩散、渗透压与双电层模型模拟</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #fbfaf6;
+      --ink: #1f312d;
+      --muted: #62706b;
+      --line: #d8ddd5;
+      --panel: #ffffff;
+      --teal: #0f8b8d;
+      --teal-soft: #d9f0ef;
+      --orange: #e27044;
+      --orange-soft: #ffe6d8;
+      --yellow: #f7c948;
+      --green: #5aaa63;
+      --blue: #3182bd;
+      --shadow: 0 18px 45px rgba(31, 49, 45, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Inter", "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 22px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .title-block h1 {
+      margin: 0 0 6px;
+      font-size: clamp(25px, 4vw, 42px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .title-block p {
+      max-width: 760px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 5px rgba(90, 170, 99, 0.12);
+    }
+
+    .tool-button {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+    }
+
+    .tool-button:hover {
+      transform: translateY(-1px);
+      border-color: #adc1bb;
+      background: #f7fbfa;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(285px, 360px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .panel,
+    .stage,
+    .formula-strip {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 680px;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      padding: 5px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f4f6f2;
+    }
+
+    .tab {
+      border: 0;
+      border-radius: 6px;
+      padding: 10px 8px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .tab[aria-selected="true"] {
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .model-copy {
+      margin: 0;
+      min-height: 72px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .control-group {
+      display: none;
+      gap: 15px;
+      flex-direction: column;
+    }
+
+    .control-group.active {
+      display: flex;
+    }
+
+    .control {
+      display: grid;
+      gap: 8px;
+    }
+
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .value {
+      color: var(--teal);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--teal);
+    }
+
+    .hint-box {
+      margin-top: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 13px;
+      background: #f9fbf8;
+    }
+
+    .hint-box h2 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .hint-box p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .stage {
+      min-height: 680px;
+      display: grid;
+      grid-template-rows: minmax(430px, 1fr) auto;
+      overflow: hidden;
+    }
+
+    .canvas-wrap {
+      min-height: 430px;
+      position: relative;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(0deg, rgba(15, 139, 141, 0.04), rgba(15, 139, 141, 0.04)),
+        #fff;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 430px;
+    }
+
+    .canvas-badge {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(31, 49, 45, 0.16);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.84);
+      backdrop-filter: blur(10px);
+      padding: 8px 11px;
+      color: var(--muted);
+      font-size: 13px;
+      pointer-events: none;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0;
+    }
+
+    .metric {
+      min-height: 98px;
+      padding: 16px;
+      border-right: 1px solid var(--line);
+    }
+
+    .metric:last-child {
+      border-right: 0;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 8px;
+      font-size: clamp(18px, 2vw, 25px);
+      line-height: 1.15;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metric small {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .formula-strip {
+      margin-top: 18px;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      box-shadow: none;
+    }
+
+    .formula {
+      border-left: 4px solid var(--teal);
+      padding: 4px 12px;
+    }
+
+    .formula:nth-child(2) {
+      border-left-color: var(--orange);
+    }
+
+    .formula:nth-child(3) {
+      border-left-color: var(--yellow);
+    }
+
+    .formula h3 {
+      margin: 0 0 6px;
+      font-size: 14px;
+    }
+
+    .formula p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 920px) {
+      .app {
+        padding: 14px;
+      }
+
+      .topbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .actions {
+        justify-content: flex-start;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .panel,
+      .stage {
+        min-height: auto;
+      }
+
+      .stage {
+        grid-template-rows: 52vh auto;
+      }
+
+      canvas {
+        min-height: 360px;
+      }
+
+      .canvas-wrap {
+        min-height: 360px;
+      }
+
+      .metrics,
+      .formula-strip {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .tabs,
+      .metrics,
+      .formula-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .metric {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .metric:last-child {
+        border-bottom: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="title-block">
+        <h1>膜扩散、渗透压与双电层模型模拟</h1>
+        <p>一个浏览器内运行的交互式教学模拟。拖动参数观察粒子通量、水位差、离子云和电势曲线的变化；动画尺度经过压缩，指标区保留物理量趋势。</p>
+      </div>
+      <div class="actions">
+        <span class="pill"><span class="dot" aria-hidden="true"></span><span id="runState">动画运行中</span></span>
+        <button class="tool-button" id="pauseBtn" type="button">暂停</button>
+        <button class="tool-button" id="resetBtn" type="button">重置</button>
+      </div>
+    </header>
+
+    <section class="layout">
+      <aside class="panel" aria-label="模拟控制">
+        <nav class="tabs" aria-label="模型选择">
+          <button class="tab" type="button" data-model="diffusion" aria-selected="true">膜扩散</button>
+          <button class="tab" type="button" data-model="osmosis" aria-selected="false">渗透压</button>
+          <button class="tab" type="button" data-model="edl" aria-selected="false">双电层</button>
+        </nav>
+
+        <p class="model-copy" id="modelCopy"></p>
+
+        <section class="control-group active" data-panel="diffusion">
+          <div class="control">
+            <label for="diffLeft">左侧初始浓度 <span class="value" data-value="diffLeft"></span></label>
+            <input id="diffLeft" data-param="diffLeft" type="range" min="10" max="200" step="5" value="150">
+          </div>
+          <div class="control">
+            <label for="diffRight">右侧初始浓度 <span class="value" data-value="diffRight"></span></label>
+            <input id="diffRight" data-param="diffRight" type="range" min="10" max="200" step="5" value="45">
+          </div>
+          <div class="control">
+            <label for="diffPermeability">膜通透性 <span class="value" data-value="diffPermeability"></span></label>
+            <input id="diffPermeability" data-param="diffPermeability" type="range" min="0" max="1" step="0.01" value="0.42">
+          </div>
+          <div class="control">
+            <label for="diffMobility">热运动强度 <span class="value" data-value="diffMobility"></span></label>
+            <input id="diffMobility" data-param="diffMobility" type="range" min="0.2" max="2.2" step="0.05" value="1.15">
+          </div>
+        </section>
+
+        <section class="control-group" data-panel="osmosis">
+          <div class="control">
+            <label for="osmLeft">左侧溶质浓度 <span class="value" data-value="osmLeft"></span></label>
+            <input id="osmLeft" data-param="osmLeft" type="range" min="0" max="300" step="5" value="180">
+          </div>
+          <div class="control">
+            <label for="osmRight">右侧溶质浓度 <span class="value" data-value="osmRight"></span></label>
+            <input id="osmRight" data-param="osmRight" type="range" min="0" max="300" step="5" value="35">
+          </div>
+          <div class="control">
+            <label for="osmTemp">温度 <span class="value" data-value="osmTemp"></span></label>
+            <input id="osmTemp" data-param="osmTemp" type="range" min="278" max="330" step="1" value="298">
+          </div>
+          <div class="control">
+            <label for="osmWaterPerm">水通道开放度 <span class="value" data-value="osmWaterPerm"></span></label>
+            <input id="osmWaterPerm" data-param="osmWaterPerm" type="range" min="0.05" max="1" step="0.01" value="0.58">
+          </div>
+        </section>
+
+        <section class="control-group" data-panel="edl">
+          <div class="control">
+            <label for="edlCharge">表面电荷密度 <span class="value" data-value="edlCharge"></span></label>
+            <input id="edlCharge" data-param="edlCharge" type="range" min="-120" max="120" step="5" value="65">
+          </div>
+          <div class="control">
+            <label for="edlIonic">电解质离子强度 <span class="value" data-value="edlIonic"></span></label>
+            <input id="edlIonic" data-param="edlIonic" type="range" min="1" max="250" step="1" value="25">
+          </div>
+          <div class="control">
+            <label for="edlStern">Stern 层厚度 <span class="value" data-value="edlStern"></span></label>
+            <input id="edlStern" data-param="edlStern" type="range" min="0.2" max="2.5" step="0.1" value="0.8">
+          </div>
+          <div class="control">
+            <label for="edlTemp">温度 <span class="value" data-value="edlTemp"></span></label>
+            <input id="edlTemp" data-param="edlTemp" type="range" min="278" max="330" step="1" value="298">
+          </div>
+        </section>
+
+        <div class="hint-box">
+          <h2 id="hintTitle">当前近似</h2>
+          <p id="hintBody"></p>
+        </div>
+      </aside>
+
+      <section class="stage" aria-label="模拟动画">
+        <div class="canvas-wrap">
+          <canvas id="simCanvas"></canvas>
+          <div class="canvas-badge" id="canvasBadge">二维粒子动画</div>
+        </div>
+        <div class="metrics" id="metrics"></div>
+      </section>
+    </section>
+
+    <section class="formula-strip" aria-label="模型公式">
+      <article class="formula">
+        <h3>膜扩散</h3>
+        <p>Fick 近似：J = -D · ΔC / Δx。浓度差越大、通透性越高，净通量越明显。</p>
+      </article>
+      <article class="formula">
+        <h3>渗透压</h3>
+        <p>van't Hoff 关系：π = i C R T。这里取单价非解离溶质，水流向高溶质浓度一侧。</p>
+      </article>
+      <article class="formula">
+        <h3>双电层</h3>
+        <p>Stern 层 + 扩散层：Debye 长度 λD 随离子强度升高而缩短，电势快速衰减。</p>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.querySelector("#simCanvas");
+    const ctx = canvas.getContext("2d");
+    const metricsEl = document.querySelector("#metrics");
+    const modelCopy = document.querySelector("#modelCopy");
+    const hintTitle = document.querySelector("#hintTitle");
+    const hintBody = document.querySelector("#hintBody");
+    const canvasBadge = document.querySelector("#canvasBadge");
+    const pauseBtn = document.querySelector("#pauseBtn");
+    const resetBtn = document.querySelector("#resetBtn");
+    const runState = document.querySelector("#runState");
+
+    const R = 8.314462618;
+    const rho = 997;
+    const g = 9.80665;
+
+    const descriptions = {
+      diffusion: {
+        copy: "半透膜两侧有可通过膜孔的溶质粒子。粒子做布朗运动，穿膜概率由通透性控制；净通量由浓度梯度驱动。",
+        hintTitle: "膜扩散近似",
+        hintBody: "动画不是逐分子真实尺度，而是用随机游走表现 Fick 扩散趋势。重置会按当前左右浓度重新生成粒子。",
+        badge: "溶质布朗运动 + 穿膜事件"
+      },
+      osmosis: {
+        copy: "膜只允许水分子通过，溶质被阻挡。高溶质浓度一侧获得更多水，液面差逐渐接近渗透压对应的平衡值。",
+        hintTitle: "渗透压近似",
+        hintBody: "指标区给出 ΔC、π 和理论水柱高度；画面中的水位被压缩到可见范围，便于观察方向和趋势。",
+        badge: "水分子跨膜 + 液面响应"
+      },
+      edl: {
+        copy: "带电固体表面附近形成 Stern 层和扩散层。反离子在表面附近富集，同号离子被排斥，电势按 Debye 长度衰减。",
+        hintTitle: "双电层近似",
+        hintBody: "使用线性化 Debye-Huckel 趋势做可视化；表面电荷决定反离子类型，离子强度决定扩散层厚薄。",
+        badge: "Stern 层 + 扩散层离子云"
+      }
+    };
+
+    const params = {
+      diffLeft: 150,
+      diffRight: 45,
+      diffPermeability: 0.42,
+      diffMobility: 1.15,
+      osmLeft: 180,
+      osmRight: 35,
+      osmTemp: 298,
+      osmWaterPerm: 0.58,
+      edlCharge: 65,
+      edlIonic: 25,
+      edlStern: 0.8,
+      edlTemp: 298
+    };
+
+    const state = {
+      model: "diffusion",
+      running: true,
+      width: 900,
+      height: 560,
+      time: 0,
+      diffusionParticles: [],
+      osmSolutes: [],
+      osmWaters: [],
+      osmLevel: 0,
+      edlIons: [],
+      trace: []
+    };
+
+    const formatters = {
+      diffLeft: v => `${v.toFixed(0)} mM`,
+      diffRight: v => `${v.toFixed(0)} mM`,
+      diffPermeability: v => `${Math.round(v * 100)}%`,
+      diffMobility: v => `${v.toFixed(2)}x`,
+      osmLeft: v => `${v.toFixed(0)} mM`,
+      osmRight: v => `${v.toFixed(0)} mM`,
+      osmTemp: v => `${v.toFixed(0)} K`,
+      osmWaterPerm: v => `${Math.round(v * 100)}%`,
+      edlCharge: v => `${v.toFixed(0)} mC/m²`,
+      edlIonic: v => `${v.toFixed(0)} mM`,
+      edlStern: v => `${v.toFixed(1)} nm`,
+      edlTemp: v => `${v.toFixed(0)} K`
+    };
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    function rand(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function chooseColor(index, total, first, second) {
+      return index < total ? first : second;
+    }
+
+    function setCanvasSize() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      state.width = Math.max(360, rect.width);
+      state.height = Math.max(360, rect.height);
+      canvas.width = Math.round(state.width * dpr);
+      canvas.height = Math.round(state.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function updateLabels() {
+      document.querySelectorAll("[data-value]").forEach(el => {
+        const key = el.dataset.value;
+        el.textContent = formatters[key](params[key]);
+      });
+    }
+
+    function setModel(model) {
+      state.model = model;
+      document.querySelectorAll(".tab").forEach(btn => {
+        btn.setAttribute("aria-selected", String(btn.dataset.model === model));
+      });
+      document.querySelectorAll(".control-group").forEach(group => {
+        group.classList.toggle("active", group.dataset.panel === model);
+      });
+      modelCopy.textContent = descriptions[model].copy;
+      hintTitle.textContent = descriptions[model].hintTitle;
+      hintBody.textContent = descriptions[model].hintBody;
+      canvasBadge.textContent = descriptions[model].badge;
+      resetCurrentModel();
+    }
+
+    function resetCurrentModel() {
+      state.trace = [];
+      if (state.model === "diffusion") resetDiffusion();
+      if (state.model === "osmosis") resetOsmosis();
+      if (state.model === "edl") resetEdl();
+    }
+
+    function resetDiffusion() {
+      const total = 170;
+      const maxC = 200;
+      const leftCount = clamp(Math.round((params.diffLeft / maxC) * 95), 10, 105);
+      const rightCount = clamp(Math.round((params.diffRight / maxC) * 95), 10, 105);
+      const particles = [];
+      const mid = state.width / 2;
+      for (let i = 0; i < leftCount; i++) {
+        particles.push({
+          x: rand(42, mid - 28),
+          y: rand(72, state.height - 110),
+          vx: rand(-0.65, 0.65),
+          vy: rand(-0.65, 0.65),
+          side: "left",
+          phase: rand(0, Math.PI * 2)
+        });
+      }
+      for (let i = 0; i < rightCount; i++) {
+        particles.push({
+          x: rand(mid + 28, state.width - 42),
+          y: rand(72, state.height - 110),
+          vx: rand(-0.65, 0.65),
+          vy: rand(-0.65, 0.65),
+          side: "right",
+          phase: rand(0, Math.PI * 2)
+        });
+      }
+      while (particles.length > total) particles.splice(Math.floor(Math.random() * particles.length), 1);
+      state.diffusionParticles = particles;
+    }
+
+    function resetOsmosis() {
+      state.osmLevel = 0;
+      const solutes = [];
+      const leftCount = clamp(Math.round(params.osmLeft / 3.2), 0, 95);
+      const rightCount = clamp(Math.round(params.osmRight / 3.2), 0, 95);
+      for (let i = 0; i < leftCount; i++) {
+        solutes.push({ side: "left", xSeed: Math.random(), ySeed: Math.random(), phase: rand(0, Math.PI * 2) });
+      }
+      for (let i = 0; i < rightCount; i++) {
+        solutes.push({ side: "right", xSeed: Math.random(), ySeed: Math.random(), phase: rand(0, Math.PI * 2) });
+      }
+      state.osmSolutes = solutes;
+      state.osmWaters = Array.from({ length: 70 }, (_, i) => ({
+        progress: i / 70,
+        lane: Math.random(),
+        offset: Math.random(),
+        radius: rand(2.2, 3.6)
+      }));
+    }
+
+    function resetEdl() {
+      const ions = [];
+      for (let i = 0; i < 190; i++) {
+        ions.push({
+          kind: i % 2 === 0 ? "positive" : "negative",
+          seedX: Math.random(),
+          seedY: Math.random(),
+          wobble: rand(0, Math.PI * 2),
+          drift: rand(0.3, 1.2)
+        });
+      }
+      state.edlIons = ions;
+    }
+
+    function drawRoundedRect(x, y, w, h, r, fill, stroke) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      if (fill) {
+        ctx.fillStyle = fill;
+        ctx.fill();
+      }
+      if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+
+    function drawArrow(x1, y1, x2, y2, color, label) {
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - 10 * Math.cos(angle - 0.45), y2 - 10 * Math.sin(angle - 0.45));
+      ctx.lineTo(x2 - 10 * Math.cos(angle + 0.45), y2 - 10 * Math.sin(angle + 0.45));
+      ctx.closePath();
+      ctx.fill();
+      if (label) {
+        ctx.font = "700 13px Segoe UI, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(label, (x1 + x2) / 2, y1 - 10);
+      }
+      ctx.restore();
+    }
+
+    function drawGrid() {
+      const w = state.width;
+      const h = state.height;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = "rgba(31,49,45,0.07)";
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 36) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y < h; y += 36) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+    }
+
+    function updateDiffusion(dt) {
+      const mid = state.width / 2;
+      const membraneHalf = 9;
+      const minY = 64;
+      const maxY = state.height - 96;
+      const mobility = params.diffMobility;
+      let crossedLtoR = 0;
+      let crossedRtoL = 0;
+
+      state.diffusionParticles.forEach(p => {
+        p.vx += rand(-0.22, 0.22) * mobility;
+        p.vy += rand(-0.22, 0.22) * mobility;
+        p.vx = clamp(p.vx, -1.75 * mobility, 1.75 * mobility);
+        p.vy = clamp(p.vy, -1.75 * mobility, 1.75 * mobility);
+        p.x += p.vx * dt * 0.85;
+        p.y += p.vy * dt * 0.85;
+
+        if (p.y < minY || p.y > maxY) {
+          p.y = clamp(p.y, minY, maxY);
+          p.vy *= -0.85;
+        }
+
+        if (p.side === "left") {
+          if (p.x < 32) {
+            p.x = 32;
+            p.vx *= -0.9;
+          }
+          if (p.x > mid - membraneHalf) {
+            const pore = Math.sin(p.y * 0.075) > 0.28;
+            const pass = pore && Math.random() < params.diffPermeability * 0.22;
+            if (pass) {
+              p.side = "right";
+              p.x = mid + membraneHalf + 2;
+              p.vx = Math.abs(p.vx) + 0.45;
+              crossedLtoR++;
+            } else {
+              p.x = mid - membraneHalf;
+              p.vx = -Math.abs(p.vx) * 0.8;
+            }
+          }
+        } else {
+          if (p.x > state.width - 32) {
+            p.x = state.width - 32;
+            p.vx *= -0.9;
+          }
+          if (p.x < mid + membraneHalf) {
+            const pore = Math.sin(p.y * 0.075) > 0.28;
+            const pass = pore && Math.random() < params.diffPermeability * 0.22;
+            if (pass) {
+              p.side = "left";
+              p.x = mid - membraneHalf - 2;
+              p.vx = -Math.abs(p.vx) - 0.45;
+              crossedRtoL++;
+            } else {
+              p.x = mid + membraneHalf;
+              p.vx = Math.abs(p.vx) * 0.8;
+            }
+          }
+        }
+      });
+
+      const left = state.diffusionParticles.filter(p => p.side === "left").length;
+      const right = state.diffusionParticles.length - left;
+      const gradient = left - right;
+      const flux = (crossedLtoR - crossedRtoL) * 60 / Math.max(1, dt);
+      state.trace.push({ a: left, b: right, c: flux, gradient });
+      if (state.trace.length > 160) state.trace.shift();
+    }
+
+    function drawDiffusion() {
+      drawGrid();
+      const w = state.width;
+      const h = state.height;
+      const mid = w / 2;
+      const top = 58;
+      const bottom = h - 84;
+
+      drawRoundedRect(34, top, mid - 52, bottom - top, 8, "rgba(217,240,239,0.65)", "#bdd9d7");
+      drawRoundedRect(mid + 18, top, mid - 52, bottom - top, 8, "rgba(255,230,216,0.62)", "#e9c6b5");
+
+      ctx.fillStyle = "#263b35";
+      ctx.font = "700 15px Segoe UI, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("左侧溶液", mid / 2, 38);
+      ctx.fillText("右侧溶液", mid + mid / 2, 38);
+
+      ctx.save();
+      ctx.fillStyle = "#f3efe2";
+      ctx.strokeStyle = "#ad9c71";
+      ctx.lineWidth = 2;
+      ctx.fillRect(mid - 9, top - 8, 18, bottom - top + 16);
+      ctx.strokeRect(mid - 9, top - 8, 18, bottom - top + 16);
+      ctx.fillStyle = "#6e613f";
+      for (let y = top + 14; y < bottom; y += 32) {
+        ctx.beginPath();
+        ctx.ellipse(mid, y, 5, 9, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      state.diffusionParticles.forEach((p, i) => {
+        const pulse = Math.sin(state.time * 0.004 + p.phase) * 0.35;
+        ctx.beginPath();
+        ctx.fillStyle = chooseColor(i, 9999, "#0f8b8d", "#0f8b8d");
+        ctx.arc(p.x, p.y, 4.2 + pulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.82)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+
+      const left = state.diffusionParticles.filter(p => p.side === "left").length;
+      const right = state.diffusionParticles.length - left;
+      const direction = left > right ? 1 : left < right ? -1 : 0;
+      const arrowY = bottom + 34;
+      if (direction > 0) {
+        drawArrow(mid - 118, arrowY, mid + 118, arrowY, "#e27044", "净扩散");
+      } else if (direction < 0) {
+        drawArrow(mid + 118, arrowY, mid - 118, arrowY, "#e27044", "净扩散");
+      } else {
+        ctx.fillStyle = "#62706b";
+        ctx.font = "700 13px Segoe UI, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("接近平衡", mid, arrowY - 4);
+      }
+      drawMiniTrace("left-right", "#0f8b8d", "#e27044");
+    }
+
+    function updateOsmosis(dt) {
+      const deltaC = params.osmLeft - params.osmRight;
+      const targetLevel = clamp(deltaC / 300, -1, 1);
+      const response = 0.004 + params.osmWaterPerm * 0.012;
+      state.osmLevel = lerp(state.osmLevel, targetLevel, 1 - Math.pow(1 - response, dt));
+      state.osmWaters.forEach(water => {
+        water.progress += params.osmWaterPerm * dt * 0.0012;
+        if (water.progress > 1) water.progress -= 1;
+      });
+    }
+
+    function drawOsmosis() {
+      drawGrid();
+      const w = state.width;
+      const h = state.height;
+      const mid = w / 2;
+      const wallTop = 62;
+      const floor = h - 88;
+      const leftX = 52;
+      const rightX = mid + 18;
+      const chamberW = mid - 70;
+      const maxRise = Math.min(96, h * 0.16);
+      const baseTop = 168;
+      const leftTop = baseTop - state.osmLevel * maxRise;
+      const rightTop = baseTop + state.osmLevel * maxRise;
+
+      drawRoundedRect(leftX, wallTop, chamberW, floor - wallTop, 8, "rgba(255,255,255,0.7)", "#ccd7d1");
+      drawRoundedRect(rightX, wallTop, chamberW, floor - wallTop, 8, "rgba(255,255,255,0.7)", "#ccd7d1");
+
+      ctx.fillStyle = "rgba(49,130,189,0.26)";
+      ctx.fillRect(leftX + 1, leftTop, chamberW - 2, floor - leftTop);
+      ctx.fillRect(rightX + 1, rightTop, chamberW - 2, floor - rightTop);
+      ctx.strokeStyle = "#3182bd";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(leftX + 2, leftTop);
+      ctx.lineTo(leftX + chamberW - 2, leftTop);
+      ctx.moveTo(rightX + 2, rightTop);
+      ctx.lineTo(rightX + chamberW - 2, rightTop);
+      ctx.stroke();
+
+      ctx.fillStyle = "#f3efe2";
+      ctx.strokeStyle = "#ad9c71";
+      ctx.lineWidth = 2;
+      ctx.fillRect(mid - 8, wallTop + 18, 16, floor - wallTop - 18);
+      ctx.strokeRect(mid - 8, wallTop + 18, 16, floor - wallTop - 18);
+      ctx.fillStyle = "#6e613f";
+      for (let y = wallTop + 45; y < floor - 10; y += 38) {
+        ctx.beginPath();
+        ctx.ellipse(mid, y, 4.6, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      state.osmSolutes.forEach(s => {
+        const x0 = s.side === "left" ? leftX + 24 : rightX + 24;
+        const width = chamberW - 48;
+        const top = s.side === "left" ? leftTop : rightTop;
+        const x = x0 + s.xSeed * width + Math.sin(state.time * 0.002 + s.phase) * 6;
+        const y = top + 22 + s.ySeed * Math.max(28, floor - top - 48) + Math.cos(state.time * 0.0024 + s.phase) * 4;
+        ctx.beginPath();
+        ctx.fillStyle = "#e27044";
+        ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      const deltaC = params.osmLeft - params.osmRight;
+      const direction = Math.sign(deltaC);
+      state.osmWaters.forEach(drop => {
+        if (direction === 0) return;
+        const p = direction > 0 ? 1 - drop.progress : drop.progress;
+        const x = lerp(leftX + chamberW - 18, rightX + 18, p);
+        const y = lerp(leftTop, rightTop, p) + 58 + drop.lane * 118 + Math.sin(state.time * 0.006 + drop.offset * 9) * 10;
+        ctx.beginPath();
+        ctx.fillStyle = "rgba(49,130,189,0.68)";
+        ctx.arc(x, y, drop.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.fillStyle = "#263b35";
+      ctx.font = "700 15px Segoe UI, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(`C左 ${params.osmLeft.toFixed(0)} mM`, leftX + chamberW / 2, 40);
+      ctx.fillText(`C右 ${params.osmRight.toFixed(0)} mM`, rightX + chamberW / 2, 40);
+
+      const arrowY = floor + 34;
+      if (deltaC > 0) {
+        drawArrow(mid + 122, arrowY, mid - 122, arrowY, "#3182bd", "水流向高浓度侧");
+      } else if (deltaC < 0) {
+        drawArrow(mid - 122, arrowY, mid + 122, arrowY, "#3182bd", "水流向高浓度侧");
+      } else {
+        ctx.fillStyle = "#62706b";
+        ctx.font = "700 13px Segoe UI, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("两侧渗透压相同", mid, arrowY - 4);
+      }
+      drawLevelScale(leftX + chamberW + 18, leftTop, rightTop);
+    }
+
+    function drawLevelScale(x, leftTop, rightTop) {
+      const top = Math.min(leftTop, rightTop);
+      const bottom = Math.max(leftTop, rightTop);
+      ctx.strokeStyle = "#263b35";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, top);
+      ctx.lineTo(x, bottom);
+      ctx.moveTo(x - 6, top);
+      ctx.lineTo(x + 6, top);
+      ctx.moveTo(x - 6, bottom);
+      ctx.lineTo(x + 6, bottom);
+      ctx.stroke();
+      ctx.fillStyle = "#263b35";
+      ctx.font = "700 12px Segoe UI, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("Δh", x + 10, (top + bottom) / 2 + 4);
+    }
+
+    function debyeLengthNm() {
+      const ionicM = Math.max(0.001, params.edlIonic / 1000);
+      return 0.304 * Math.sqrt(params.edlTemp / 298) / Math.sqrt(ionicM);
+    }
+
+    function surfacePotentialMv() {
+      const sigma = params.edlCharge;
+      const ionicFactor = Math.sqrt(params.edlIonic / 25);
+      return clamp((sigma / (1.2 + ionicFactor)) * 1.65, -140, 140);
+    }
+
+    function updateEdl(dt) {
+      state.edlIons.forEach(ion => {
+        ion.wobble += dt * 0.012 * ion.drift;
+      });
+    }
+
+    function drawEdl() {
+      drawGrid();
+      const w = state.width;
+      const h = state.height;
+      const electrodeX = 92;
+      const top = 58;
+      const bottom = h - 88;
+      const simW = w - electrodeX - 52;
+      const lambda = debyeLengthNm();
+      const psi0 = surfacePotentialMv();
+      const chargeSign = Math.sign(params.edlCharge) || 1;
+      const sternPx = clamp(params.edlStern / 8 * simW, 12, 90);
+      const lambdaPx = clamp(lambda / 20 * simW, 18, simW * 0.7);
+
+      drawRoundedRect(electrodeX - 58, top, 52, bottom - top, 8, "#263b35", "#263b35");
+      ctx.fillStyle = "#f3efe2";
+      ctx.fillRect(electrodeX - 6, top, sternPx, bottom - top);
+      ctx.fillStyle = "rgba(217,240,239,0.62)";
+      ctx.fillRect(electrodeX - 6 + sternPx, top, simW - sternPx, bottom - top);
+      ctx.strokeStyle = "#ccd7d1";
+      ctx.strokeRect(electrodeX - 6, top, simW, bottom - top);
+
+      for (let y = top + 24; y < bottom; y += 34) {
+        drawCharge(electrodeX - 32, y, chargeSign > 0 ? "+" : "-", chargeSign > 0 ? "#e27044" : "#3182bd");
+      }
+
+      ctx.fillStyle = "#263b35";
+      ctx.font = "700 13px Segoe UI, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("带电表面", electrodeX - 32, top - 18);
+      ctx.fillText("Stern 层", electrodeX + sternPx / 2, top - 18);
+      ctx.fillText("扩散层", electrodeX + sternPx + (simW - sternPx) / 2, top - 18);
+
+      const counterKind = chargeSign > 0 ? "negative" : "positive";
+      state.edlIons.forEach((ion, index) => {
+        const isCounter = ion.kind === counterKind;
+        const localBoost = isCounter ? 1 : 0.25;
+        const spread = isCounter
+          ? -Math.log(0.04 + ion.seedX * 0.96) * lambdaPx * 0.72
+          : Math.pow(ion.seedX, 0.45) * simW;
+        let x = electrodeX + sternPx + spread * localBoost + (isCounter ? 0 : sternPx * 0.2);
+        if (!isCounter) x = electrodeX + sternPx + 18 + spread * 0.92;
+        x += Math.sin(ion.wobble) * 6;
+        x = clamp(x, electrodeX + 8, w - 42);
+        const y = top + 22 + ion.seedY * (bottom - top - 44) + Math.cos(ion.wobble * 0.7 + index) * 5;
+        drawCharge(x, y, ion.kind === "positive" ? "+" : "-", ion.kind === "positive" ? "#e27044" : "#3182bd");
+      });
+
+      drawPotentialCurve(electrodeX, top, simW, bottom - top, lambdaPx, psi0, sternPx);
+      drawMiniAxis(electrodeX, bottom + 34, simW, lambda, psi0);
+    }
+
+    function drawCharge(x, y, sign, color) {
+      ctx.beginPath();
+      ctx.fillStyle = color;
+      ctx.arc(x, y, 8.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.9)";
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+      ctx.fillStyle = "#fff";
+      ctx.font = "800 12px Segoe UI, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(sign, x, y - 0.5);
+      ctx.textBaseline = "alphabetic";
+    }
+
+    function drawPotentialCurve(x0, y0, width, height, lambdaPx, psi0, sternPx) {
+      const chartX = x0 + 28;
+      const chartY = y0 + height * 0.58;
+      const chartH = height * 0.28;
+      const chartW = width - 62;
+      ctx.save();
+      ctx.strokeStyle = "rgba(31,49,45,0.28)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(chartX, chartY);
+      ctx.lineTo(chartX + chartW, chartY);
+      ctx.stroke();
+
+      ctx.strokeStyle = "#263b35";
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      for (let i = 0; i <= 140; i++) {
+        const x = (i / 140) * chartW;
+        const raw = x < sternPx
+          ? psi0 * (1 - 0.35 * (x / Math.max(1, sternPx)))
+          : psi0 * 0.65 * Math.exp(-(x - sternPx) / Math.max(6, lambdaPx));
+        const y = chartY - (raw / 150) * chartH;
+        if (i === 0) ctx.moveTo(chartX + x, y);
+        else ctx.lineTo(chartX + x, y);
+      }
+      ctx.stroke();
+      ctx.fillStyle = "#263b35";
+      ctx.font = "700 12px Segoe UI, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("ψ(x)", chartX, chartY - chartH - 8);
+      ctx.restore();
+    }
+
+    function drawMiniAxis(x, y, width, lambda, psi0) {
+      ctx.strokeStyle = "#263b35";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + width, y);
+      ctx.stroke();
+      const tick = clamp(lambda / 20 * width, 18, width * 0.7);
+      ctx.strokeStyle = "#e27044";
+      ctx.beginPath();
+      ctx.moveTo(x + tick, y - 10);
+      ctx.lineTo(x + tick, y + 10);
+      ctx.stroke();
+      ctx.fillStyle = "#263b35";
+      ctx.font = "700 12px Segoe UI, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(`λD ≈ ${lambda.toFixed(2)} nm`, x + tick + 8, y + 4);
+      ctx.textAlign = "right";
+      ctx.fillText(`ψ0 ≈ ${psi0.toFixed(0)} mV`, x + width, y - 12);
+    }
+
+    function drawMiniTrace(mode, colorA, colorB) {
+      const trace = state.trace;
+      if (trace.length < 3) return;
+      const w = state.width;
+      const h = state.height;
+      const x0 = w - 194;
+      const y0 = h - 182;
+      const cw = 150;
+      const ch = 82;
+      drawRoundedRect(x0 - 10, y0 - 18, cw + 20, ch + 36, 8, "rgba(255,255,255,0.78)", "rgba(31,49,45,0.12)");
+      ctx.fillStyle = "#263b35";
+      ctx.font = "700 12px Segoe UI, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("浓度随时间", x0, y0 - 2);
+      const max = Math.max(...trace.map(t => Math.max(t.a, t.b)), 1);
+      plotLine(trace.map(t => t.a / max), x0, y0 + 8, cw, ch, colorA);
+      plotLine(trace.map(t => t.b / max), x0, y0 + 8, cw, ch, colorB);
+    }
+
+    function plotLine(values, x, y, w, h, color) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      values.forEach((v, i) => {
+        const px = x + (i / Math.max(1, values.length - 1)) * w;
+        const py = y + h - v * h;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+    }
+
+    function updateMetrics() {
+      if (state.model === "diffusion") {
+        const left = state.diffusionParticles.filter(p => p.side === "left").length;
+        const right = state.diffusionParticles.length - left;
+        const gradient = left - right;
+        const fluxEstimate = params.diffPermeability * Math.abs(gradient) * params.diffMobility;
+        metricsEl.innerHTML = metricHtml([
+          ["左侧粒子", left, "动画中的相对浓度"],
+          ["右侧粒子", right, "动画中的相对浓度"],
+          ["浓度差", signed(gradient), "左 - 右"],
+          ["估计净通量", fluxEstimate.toFixed(1), "D·ΔC/Δx 的相对量"]
+        ]);
+      }
+
+      if (state.model === "osmosis") {
+        const deltaM3 = params.osmLeft - params.osmRight;
+        const pi = Math.abs(deltaM3) * R * params.osmTemp;
+        const height = pi / (rho * g);
+        metricsEl.innerHTML = metricHtml([
+          ["ΔC", `${signed(deltaM3)} mM`, "左 - 右"],
+          ["渗透压差", `${(pi / 1000).toFixed(1)} kPa`, "π = C R T"],
+          ["理论水柱", `${height.toFixed(1)} m`, "未按画面缩放"],
+          ["液面响应", `${(state.osmLevel * 100).toFixed(0)}%`, "动画平衡进度"]
+        ]);
+      }
+
+      if (state.model === "edl") {
+        const lambda = debyeLengthNm();
+        const psi0 = surfacePotentialMv();
+        const counter = params.edlCharge >= 0 ? "阴离子" : "阳离子";
+        const decay = params.edlStern + lambda;
+        metricsEl.innerHTML = metricHtml([
+          ["Debye 长度", `${lambda.toFixed(2)} nm`, "扩散层特征厚度"],
+          ["表面电势", `${psi0.toFixed(0)} mV`, "可视化近似值"],
+          ["反离子", counter, "靠近表面富集"],
+          ["1/e 衰减距离", `${decay.toFixed(2)} nm`, "Stern + λD"]
+        ]);
+      }
+    }
+
+    function metricHtml(items) {
+      return items.map(([label, value, note]) => `
+        <div class="metric">
+          <span>${label}</span>
+          <strong>${value}</strong>
+          <small>${note}</small>
+        </div>
+      `).join("");
+    }
+
+    function signed(value) {
+      if (typeof value === "number") return value > 0 ? `+${value.toFixed(0)}` : value.toFixed(0);
+      return value;
+    }
+
+    function tick(now) {
+      if (state.running) {
+        const dt = Math.min(32, Math.max(10, now - state.time || 16)) / 16.67;
+        state.time = now;
+        if (state.model === "diffusion") updateDiffusion(dt);
+        if (state.model === "osmosis") updateOsmosis(dt);
+        if (state.model === "edl") updateEdl(dt);
+      } else {
+        state.time = now;
+      }
+
+      if (state.model === "diffusion") drawDiffusion();
+      if (state.model === "osmosis") drawOsmosis();
+      if (state.model === "edl") drawEdl();
+      updateMetrics();
+      requestAnimationFrame(tick);
+    }
+
+    document.querySelectorAll("[data-param]").forEach(input => {
+      input.addEventListener("input", event => {
+        const key = event.target.dataset.param;
+        params[key] = Number(event.target.value);
+        updateLabels();
+        resetCurrentModel();
+      });
+    });
+
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => setModel(tab.dataset.model));
+    });
+
+    pauseBtn.addEventListener("click", () => {
+      state.running = !state.running;
+      pauseBtn.textContent = state.running ? "暂停" : "继续";
+      runState.textContent = state.running ? "动画运行中" : "已暂停";
+    });
+
+    resetBtn.addEventListener("click", resetCurrentModel);
+
+    window.addEventListener("resize", () => {
+      setCanvasSize();
+      resetCurrentModel();
+    });
+
+    setCanvasSize();
+    updateLabels();
+    setModel("diffusion");
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
