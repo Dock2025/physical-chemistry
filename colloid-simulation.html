@@ -1,0 +1,1276 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>胶体粒子聚集与稳定性模拟</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f8f7;
+      --panel: #ffffff;
+      --ink: #1c2421;
+      --muted: #66736e;
+      --line: #dce4df;
+      --teal: #008f8a;
+      --cyan: #13b8d1;
+      --green: #34a853;
+      --lime: #b6e33d;
+      --red: #e45757;
+      --violet: #7d5fff;
+      --shadow: 0 18px 50px rgba(31, 42, 38, 0.12);
+      font-family: "Inter", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 10% 10%, rgba(19, 184, 209, 0.13), transparent 30%),
+        radial-gradient(circle at 88% 14%, rgba(182, 227, 61, 0.16), transparent 28%),
+        linear-gradient(135deg, #fbfcfb, var(--bg));
+      color: var(--ink);
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1480px, 100%);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 18px;
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 16px;
+    }
+
+    .panel {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .sidebar {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+    }
+
+    .brand {
+      display: grid;
+      gap: 6px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 13px;
+    }
+
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: #35413d;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 8px;
+      min-height: 40px;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-weight: 750;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    .button:hover {
+      border-color: #9bc7c1;
+      transform: translateY(-1px);
+    }
+
+    .button.primary {
+      background: #113c38;
+      border-color: #113c38;
+      color: #fff;
+    }
+
+    .button.danger {
+      color: #a72c2c;
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .preset {
+      border: 1px solid var(--line);
+      background: #fbfdfc;
+      border-radius: 8px;
+      padding: 9px 10px;
+      min-height: 44px;
+      cursor: pointer;
+      text-align: left;
+      font-weight: 700;
+      color: #2f3a36;
+    }
+
+    .preset.active {
+      border-color: var(--teal);
+      background: #ecfbf8;
+      box-shadow: inset 0 0 0 1px rgba(0, 143, 138, 0.18);
+    }
+
+    .control {
+      display: grid;
+      gap: 7px;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .control:last-child {
+      border-bottom: 0;
+    }
+
+    .control-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .control label {
+      font-size: 13px;
+      font-weight: 760;
+      color: #2b3531;
+    }
+
+    .value {
+      color: var(--teal);
+      font-weight: 850;
+      font-variant-numeric: tabular-nums;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--teal);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .main {
+      display: grid;
+      grid-template-rows: auto minmax(420px, 1fr) auto;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .topbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+    }
+
+    .status {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 6px 10px;
+      color: #3d4743;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 4px rgba(52, 168, 83, 0.15);
+    }
+
+    .dot.unstable {
+      background: var(--red);
+      box-shadow: 0 0 0 4px rgba(228, 87, 87, 0.15);
+    }
+
+    .formula {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+      text-align: right;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      min-height: 420px;
+      overflow: hidden;
+      background:
+        linear-gradient(rgba(0, 143, 138, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 143, 138, 0.08) 1px, transparent 1px),
+        #ffffff;
+      background-size: 32px 32px;
+    }
+
+    #simCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    .legend {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-width: calc(100% - 24px);
+      pointer-events: none;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.86);
+      border: 1px solid rgba(220, 228, 223, 0.88);
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 12px;
+      color: #40504a;
+      backdrop-filter: blur(8px);
+    }
+
+    .swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .metrics {
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+      overflow: auto;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfdfc;
+      display: grid;
+      gap: 4px;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .metric-value {
+      font-size: 25px;
+      line-height: 1;
+      font-weight: 850;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .meter {
+      height: 8px;
+      background: #e8efeb;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .meter > i {
+      display: block;
+      height: 100%;
+      width: 50%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--red), var(--lime), var(--green));
+      transition: width 160ms ease;
+    }
+
+    .chart-card {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 1fr;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .chart-box {
+      min-height: 130px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 6px;
+    }
+
+    .chart-title {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 780;
+    }
+
+    canvas.chart {
+      width: 100%;
+      height: 86px;
+      display: block;
+    }
+
+    .note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .readout {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .readout-item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: #fbfdfc;
+    }
+
+    .readout-item b {
+      display: block;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .readout-item span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    @media (max-width: 1040px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        max-height: none;
+      }
+
+      .stage {
+        grid-template-columns: 1fr;
+      }
+
+      .metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .app {
+        padding: 10px;
+      }
+
+      .topbar,
+      .chart-card {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        display: grid;
+        align-items: start;
+      }
+
+      .formula {
+        text-align: left;
+      }
+
+      .metrics,
+      .readout {
+        grid-template-columns: 1fr;
+      }
+
+      .preset-grid,
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .canvas-wrap {
+        min-height: 470px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar panel" aria-label="模拟控制">
+      <div class="brand">
+        <h1>胶体粒子聚集与稳定性模拟</h1>
+        <p class="subtitle">调节离子强度、ζ 电位、吸引强度、pH 与剪切，观察粒子从稳定分散到絮凝聚集的动态变化。</p>
+      </div>
+
+      <div>
+        <p class="section-title">运行</p>
+        <div class="toolbar">
+          <button class="button primary" id="playBtn" type="button">暂停</button>
+          <button class="button" id="stepBtn" type="button">单步</button>
+          <button class="button" id="shakeBtn" type="button">扰动</button>
+          <button class="button danger" id="resetBtn" type="button">重置</button>
+        </div>
+      </div>
+
+      <div>
+        <p class="section-title">场景</p>
+        <div class="preset-grid" id="presetGrid">
+          <button class="preset active" type="button" data-preset="stable">稳定分散</button>
+          <button class="preset" type="button" data-preset="rapid">快速凝聚</button>
+          <button class="preset" type="button" data-preset="salt">盐析</button>
+          <button class="preset" type="button" data-preset="shear">剪切解聚</button>
+        </div>
+      </div>
+
+      <div>
+        <p class="section-title">参数</p>
+
+        <div class="control">
+          <div class="control-head">
+            <label for="count">粒子数量</label>
+            <span class="value" id="countValue">130</span>
+          </div>
+          <input id="count" type="range" min="40" max="220" step="10" value="130" />
+          <span class="hint">重置后生效；数量越多，碰撞越频繁。</span>
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <label for="ionic">离子强度</label>
+            <span class="value" id="ionicValue">18 mM</span>
+          </div>
+          <input id="ionic" type="range" min="1" max="220" step="1" value="18" />
+          <span class="hint">盐浓度升高会压缩双电层，使静电斥力更短程。</span>
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <label for="zeta">ζ 电位绝对值</label>
+            <span class="value" id="zetaValue">46 mV</span>
+          </div>
+          <input id="zeta" type="range" min="0" max="80" step="1" value="46" />
+          <span class="hint">ζ 电位越高，粒子表面电荷排斥越强，体系越稳定。</span>
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <label for="attraction">范德华吸引</label>
+            <span class="value" id="attractionValue">0.75×</span>
+          </div>
+          <input id="attraction" type="range" min="0.2" max="2.8" step="0.05" value="0.75" />
+          <span class="hint">可近似理解为 Hamaker 常数或疏水吸引的综合强度。</span>
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <label for="ph">pH</label>
+            <span class="value" id="phValue">8.2</span>
+          </div>
+          <input id="ph" type="range" min="3" max="11" step="0.1" value="8.2" />
+          <span class="hint">接近等电点时有效电位下降，更容易发生絮凝。</span>
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <label for="temperature">温度</label>
+            <span class="value" id="temperatureValue">298 K</span>
+          </div>
+          <input id="temperature" type="range" min="278" max="330" step="1" value="298" />
+          <span class="hint">温度越高，布朗扰动越强，碰撞机会增加。</span>
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <label for="shear">剪切/搅拌</label>
+            <span class="value" id="shearValue">0.18</span>
+          </div>
+          <input id="shear" type="range" min="0" max="2.2" step="0.01" value="0.18" />
+          <span class="hint">适度搅拌促进碰撞，强剪切会拉断较弱团聚体。</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="topbar panel" aria-label="模拟状态">
+        <div class="status">
+          <span class="pill"><i class="dot" id="stateDot"></i><span id="stateText">稳定分散</span></span>
+          <span class="pill">时间 <b id="timeText">0.0 s</b></span>
+          <span class="pill">Debye 长度 <b id="debyeText">7.2 nm</b></span>
+          <span class="pill">碰撞 <b id="collisionText">0</b></span>
+        </div>
+        <div class="formula">
+          简化 DLVO：U(h) ≈ U<sub>rep</sub>e<sup>-h/κ<sup>-1</sup></sup> - A/(h + h<sub>0</sub>)
+        </div>
+      </section>
+
+      <section class="stage">
+        <div class="canvas-wrap panel">
+          <canvas id="simCanvas"></canvas>
+          <div class="legend" aria-hidden="true">
+            <span><i class="swatch" style="background:#13b8d1"></i>单分散粒子</span>
+            <span><i class="swatch" style="background:#b6e33d"></i>小团簇</span>
+            <span><i class="swatch" style="background:#e45757"></i>大团聚体</span>
+            <span><i class="swatch" style="background:#7d5fff"></i>相互作用范围</span>
+          </div>
+        </div>
+
+        <aside class="metrics panel" aria-label="实时指标">
+          <div class="metric">
+            <span class="metric-label">稳定性指数</span>
+            <strong class="metric-value" id="stabilityText">82</strong>
+            <div class="meter"><i id="stabilityMeter"></i></div>
+          </div>
+          <div class="metric">
+            <span class="metric-label">最大团簇</span>
+            <strong class="metric-value" id="largestText">1</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">平均团簇大小</span>
+            <strong class="metric-value" id="averageText">1.00</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">游离粒子比例</span>
+            <strong class="metric-value" id="freeText">100%</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">聚集速率</span>
+            <strong class="metric-value" id="rateText">0.00/s</strong>
+          </div>
+        </aside>
+      </section>
+
+      <section class="chart-card panel" aria-label="趋势与模型读数">
+        <div class="chart-box">
+          <p class="chart-title">稳定性与最大团簇趋势</p>
+          <canvas class="chart" id="trendChart"></canvas>
+        </div>
+        <div>
+          <p class="section-title">当前模型读数</p>
+          <div class="readout">
+            <div class="readout-item"><b id="barrierText">2.41 kT</b><span>势垒估计</span></div>
+            <div class="readout-item"><b id="stickText">0.8%</b><span>单次接触粘附概率</span></div>
+            <div class="readout-item"><b id="pzcText">0.24</b><span>等电点接近度</span></div>
+            <div class="readout-item"><b id="breakText">0.02%</b><span>键断裂概率/步</span></div>
+          </div>
+          <p class="note">这是用于教学与直觉探索的二维简化模型，不替代真实 DLVO 拟合、DLS 或 ζ 电位实验数据。</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("simCanvas");
+    const ctx = canvas.getContext("2d");
+    const trendCanvas = document.getElementById("trendChart");
+    const trendCtx = trendCanvas.getContext("2d");
+
+    const controls = {
+      count: document.getElementById("count"),
+      ionic: document.getElementById("ionic"),
+      zeta: document.getElementById("zeta"),
+      attraction: document.getElementById("attraction"),
+      ph: document.getElementById("ph"),
+      temperature: document.getElementById("temperature"),
+      shear: document.getElementById("shear")
+    };
+
+    const labels = {
+      count: document.getElementById("countValue"),
+      ionic: document.getElementById("ionicValue"),
+      zeta: document.getElementById("zetaValue"),
+      attraction: document.getElementById("attractionValue"),
+      ph: document.getElementById("phValue"),
+      temperature: document.getElementById("temperatureValue"),
+      shear: document.getElementById("shearValue")
+    };
+
+    const readouts = {
+      playBtn: document.getElementById("playBtn"),
+      timeText: document.getElementById("timeText"),
+      debyeText: document.getElementById("debyeText"),
+      collisionText: document.getElementById("collisionText"),
+      stabilityText: document.getElementById("stabilityText"),
+      stabilityMeter: document.getElementById("stabilityMeter"),
+      largestText: document.getElementById("largestText"),
+      averageText: document.getElementById("averageText"),
+      freeText: document.getElementById("freeText"),
+      rateText: document.getElementById("rateText"),
+      stateDot: document.getElementById("stateDot"),
+      stateText: document.getElementById("stateText"),
+      barrierText: document.getElementById("barrierText"),
+      stickText: document.getElementById("stickText"),
+      pzcText: document.getElementById("pzcText"),
+      breakText: document.getElementById("breakText")
+    };
+
+    const presets = {
+      stable: { count: 130, ionic: 18, zeta: 46, attraction: 0.75, ph: 8.2, temperature: 298, shear: 0.18 },
+      rapid: { count: 130, ionic: 145, zeta: 13, attraction: 1.85, ph: 6.7, temperature: 306, shear: 0.32 },
+      salt: { count: 150, ionic: 205, zeta: 28, attraction: 1.15, ph: 8.0, temperature: 300, shear: 0.22 },
+      shear: { count: 120, ionic: 60, zeta: 30, attraction: 1.35, ph: 7.2, temperature: 302, shear: 1.45 }
+    };
+
+    const palette = {
+      free: "#13b8d1",
+      small: "#b6e33d",
+      medium: "#54c66e",
+      large: "#e45757",
+      halo: "rgba(125, 95, 255, 0.14)",
+      bond: "rgba(28, 36, 33, 0.22)"
+    };
+
+    let width = 900;
+    let height = 560;
+    let particles = [];
+    let bonds = new Map();
+    let running = true;
+    let lastFrame = performance.now();
+    let simTime = 0;
+    let collisions = 0;
+    let recentBonds = [];
+    let trend = [];
+    let activePreset = "stable";
+    let stats = {
+      stability: 100,
+      largest: 1,
+      average: 1,
+      freeFraction: 1,
+      clusters: new Map(),
+      clusterSizeByParticle: [],
+      rate: 0,
+      model: {}
+    };
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function rand(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function keyFor(a, b) {
+      return a < b ? `${a}:${b}` : `${b}:${a}`;
+    }
+
+    function values() {
+      return {
+        count: Number(controls.count.value),
+        ionic: Number(controls.ionic.value),
+        zeta: Number(controls.zeta.value),
+        attraction: Number(controls.attraction.value),
+        ph: Number(controls.ph.value),
+        temperature: Number(controls.temperature.value),
+        shear: Number(controls.shear.value)
+      };
+    }
+
+    function resize() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      width = Math.max(320, Math.floor(rect.width));
+      height = Math.max(360, Math.floor(rect.height));
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const chartRect = trendCanvas.getBoundingClientRect();
+      trendCanvas.width = Math.floor(Math.max(280, chartRect.width) * dpr);
+      trendCanvas.height = Math.floor(Math.max(80, chartRect.height) * dpr);
+      trendCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      draw();
+      drawTrend();
+    }
+
+    function updateLabels() {
+      const v = values();
+      labels.count.textContent = `${v.count}`;
+      labels.ionic.textContent = `${v.ionic} mM`;
+      labels.zeta.textContent = `${v.zeta} mV`;
+      labels.attraction.textContent = `${v.attraction.toFixed(2)}×`;
+      labels.ph.textContent = v.ph.toFixed(1);
+      labels.temperature.textContent = `${v.temperature} K`;
+      labels.shear.textContent = v.shear.toFixed(2);
+    }
+
+    function applyPreset(name) {
+      activePreset = name;
+      const preset = presets[name];
+      Object.entries(preset).forEach(([key, value]) => {
+        controls[key].value = value;
+      });
+      document.querySelectorAll(".preset").forEach((button) => {
+        button.classList.toggle("active", button.dataset.preset === name);
+      });
+      updateLabels();
+      resetSimulation();
+    }
+
+    function modelTerms(v) {
+      const pzc = 6.6;
+      const pzcProximity = Math.exp(-Math.pow((v.ph - pzc) / 1.15, 2));
+      const effectiveZeta = v.zeta * (1 - 0.72 * pzcProximity);
+      const debyeNm = 9.6 / Math.sqrt(Math.max(0.5, v.ionic));
+      const debyePx = clamp(debyeNm * 3.2, 3.5, 26);
+      const repulsion = Math.pow(effectiveZeta / 34, 2) * Math.sqrt(30 / (v.ionic + 8));
+      const attraction = v.attraction * (1 + 0.28 * pzcProximity);
+      const shearMix = 1 + Math.min(0.85, v.shear * 0.35);
+      const thermal = Math.sqrt(v.temperature / 298);
+      const barrierKT = (repulsion * 2.35) - (attraction * 0.82) - (v.ionic / 190) + (v.zeta / 120);
+      const barrier = clamp(barrierKT, -2.5, 5.5);
+      const saltDestabilization = Math.log10(v.ionic + 5) / 2.35;
+      const stickRaw = 0.022 + attraction * 0.055 + saltDestabilization * 0.04 + pzcProximity * 0.11;
+      const electrostaticProtection = Math.pow(effectiveZeta / 72, 2) * 0.13 + Math.max(0, barrier) * 0.032;
+      const stickProbability = clamp((stickRaw - electrostaticProtection) * shearMix * thermal, 0.001, 0.72);
+      const breakProbability = clamp(0.00025 + Math.pow(v.shear, 1.55) * 0.0028 + repulsion * 0.0006 - attraction * 0.00055, 0.00002, 0.035);
+      const stability = clamp(74 + barrier * 13 - stickProbability * 72 - saltDestabilization * 15 - pzcProximity * 18 - stats.largest * 0.16, 0, 100);
+
+      return {
+        pzcProximity,
+        effectiveZeta,
+        debyeNm,
+        debyePx,
+        repulsion,
+        attraction,
+        thermal,
+        barrier,
+        stickProbability,
+        breakProbability,
+        stability
+      };
+    }
+
+    function resetSimulation() {
+      const v = values();
+      particles = [];
+      bonds = new Map();
+      simTime = 0;
+      collisions = 0;
+      recentBonds = [];
+      trend = [];
+
+      const radius = clamp(Math.sqrt((width * height) / (v.count * 950)), 3.2, 6.8);
+      const attemptsLimit = v.count * 80;
+      let attempts = 0;
+
+      while (particles.length < v.count && attempts < attemptsLimit) {
+        attempts += 1;
+        const x = rand(radius * 4, width - radius * 4);
+        const y = rand(radius * 4, height - radius * 4);
+        const clear = particles.every((p) => {
+          const dx = p.x - x;
+          const dy = p.y - y;
+          return dx * dx + dy * dy > Math.pow(radius * 2.5, 2);
+        });
+        if (clear || attempts > attemptsLimit * 0.72) {
+          particles.push({
+            id: particles.length,
+            x,
+            y,
+            vx: rand(-0.35, 0.35),
+            vy: rand(-0.35, 0.35),
+            fx: 0,
+            fy: 0,
+            r: radius * rand(0.86, 1.12),
+            seed: Math.random() * Math.PI * 2
+          });
+        }
+      }
+
+      stats = computeStats();
+      updateReadouts();
+      draw();
+      drawTrend();
+    }
+
+    function computeStats() {
+      const parent = particles.map((_, i) => i);
+      const size = particles.map(() => 1);
+
+      function find(x) {
+        while (parent[x] !== x) {
+          parent[x] = parent[parent[x]];
+          x = parent[x];
+        }
+        return x;
+      }
+
+      function unite(a, b) {
+        let ra = find(a);
+        let rb = find(b);
+        if (ra === rb) return;
+        if (size[ra] < size[rb]) [ra, rb] = [rb, ra];
+        parent[rb] = ra;
+        size[ra] += size[rb];
+      }
+
+      bonds.forEach((bond) => unite(bond.a, bond.b));
+
+      const clusters = new Map();
+      particles.forEach((p) => {
+        const root = find(p.id);
+        if (!clusters.has(root)) clusters.set(root, []);
+        clusters.get(root).push(p.id);
+      });
+
+      const clusterSizeByParticle = particles.map((p) => clusters.get(find(p.id)).length);
+      const clusterSizes = Array.from(clusters.values(), (ids) => ids.length);
+      const largest = Math.max(1, ...clusterSizes);
+      const average = particles.length / Math.max(1, clusters.size);
+      const freeFraction = clusterSizes.filter((n) => n === 1).length / Math.max(1, particles.length);
+      const recentCutoff = simTime - 5;
+      recentBonds = recentBonds.filter((t) => t >= recentCutoff);
+      const rate = recentBonds.length / 5;
+      const model = modelTerms(values());
+      const stability = clamp(model.stability - largest * 0.18 - (1 - freeFraction) * 12, 0, 100);
+
+      return { clusters, clusterSizeByParticle, largest, average, freeFraction, rate, stability, model };
+    }
+
+    function addBond(a, b, distance, strength) {
+      const key = keyFor(a, b);
+      if (bonds.has(key)) return;
+      bonds.set(key, {
+        a,
+        b,
+        rest: Math.max(4, distance),
+        strength,
+        age: 0
+      });
+      recentBonds.push(simTime);
+    }
+
+    function stepSimulation(dt) {
+      const v = values();
+      const m = modelTerms(v);
+      const brownian = 0.58 * m.thermal;
+      const viscosityDrag = 0.986 - Math.min(0.018, v.shear * 0.004);
+      const interactionRange = Math.max(24, particles[0]?.r * 6 + m.debyePx * 1.6);
+
+      for (const p of particles) {
+        p.fx = (Math.random() - 0.5) * brownian;
+        p.fy = (Math.random() - 0.5) * brownian;
+        const shearCenter = (p.y / height) - 0.5;
+        p.fx += shearCenter * v.shear * 0.10;
+        p.fy += Math.sin(simTime * 0.9 + p.seed) * v.shear * 0.006;
+      }
+
+      for (let i = 0; i < particles.length; i += 1) {
+        const a = particles[i];
+        for (let j = i + 1; j < particles.length; j += 1) {
+          const b = particles[j];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 > interactionRange * interactionRange) continue;
+
+          const d = Math.sqrt(d2) || 0.001;
+          const nx = dx / d;
+          const ny = dy / d;
+          const contact = a.r + b.r;
+          const gap = d - contact;
+          const bonded = bonds.has(keyFor(a.id, b.id));
+
+          if (!bonded) {
+            const rep = m.repulsion * 0.36 * Math.exp(-Math.max(0, gap) / m.debyePx);
+            const attr = m.attraction * 0.34 / Math.pow(Math.max(3.2, gap + 7), 1.15);
+            let force = rep - attr;
+
+            if (gap < 0) {
+              force += -gap * 0.12;
+            }
+
+            a.fx -= nx * force;
+            a.fy -= ny * force;
+            b.fx += nx * force;
+            b.fy += ny * force;
+
+            if (gap < 1.8) {
+              collisions += 1;
+              const relative = Math.hypot(a.vx - b.vx, a.vy - b.vy);
+              const contactBoost = clamp(1.55 - relative * 0.16, 0.45, 1.55);
+              const pStick = m.stickProbability * contactBoost * dt * 4.2;
+              if (Math.random() < pStick) {
+                addBond(a.id, b.id, contact * rand(0.92, 1.05), clamp(m.attraction * 0.52 + 0.35 - v.shear * 0.04, 0.18, 2.2));
+              }
+            }
+          }
+        }
+      }
+
+      bonds.forEach((bond, key) => {
+        const a = particles[bond.a];
+        const b = particles[bond.b];
+        if (!a || !b) return;
+        bond.age += dt;
+
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const d = Math.sqrt(dx * dx + dy * dy) || 0.001;
+        const nx = dx / d;
+        const ny = dy / d;
+        const stretch = d - bond.rest;
+        const spring = stretch * 0.05 * bond.strength;
+        const damping = ((b.vx - a.vx) * nx + (b.vy - a.vy) * ny) * 0.012;
+        const force = spring + damping;
+
+        a.fx += nx * force;
+        a.fy += ny * force;
+        b.fx -= nx * force;
+        b.fy -= ny * force;
+
+        const strain = Math.abs(stretch) / Math.max(1, bond.rest);
+        const breakChance = (m.breakProbability + strain * strain * 0.002) * dt * 5;
+        if (bond.age > 0.6 && Math.random() < breakChance) {
+          bonds.delete(key);
+        }
+      });
+
+      for (const p of particles) {
+        const clusterSize = stats.clusterSizeByParticle[p.id] || 1;
+        const massDrag = Math.pow(clusterSize, 0.24);
+        p.vx = (p.vx + p.fx / massDrag) * viscosityDrag;
+        p.vy = (p.vy + p.fy / massDrag) * viscosityDrag;
+
+        const speed = Math.hypot(p.vx, p.vy);
+        const maxSpeed = 3.2 / Math.pow(clusterSize, 0.18);
+        if (speed > maxSpeed) {
+          p.vx = (p.vx / speed) * maxSpeed;
+          p.vy = (p.vy / speed) * maxSpeed;
+        }
+
+        p.x += p.vx * dt * 60;
+        p.y += p.vy * dt * 60;
+
+        if (p.x < p.r) {
+          p.x = p.r;
+          p.vx = Math.abs(p.vx) * 0.72;
+        } else if (p.x > width - p.r) {
+          p.x = width - p.r;
+          p.vx = -Math.abs(p.vx) * 0.72;
+        }
+
+        if (p.y < p.r) {
+          p.y = p.r;
+          p.vy = Math.abs(p.vy) * 0.72;
+        } else if (p.y > height - p.r) {
+          p.y = height - p.r;
+          p.vy = -Math.abs(p.vy) * 0.72;
+        }
+      }
+
+      simTime += dt;
+      stats = computeStats();
+
+      if (trend.length === 0 || simTime - trend[trend.length - 1].time > 0.28) {
+        trend.push({
+          time: simTime,
+          stability: stats.stability,
+          largest: stats.largest
+        });
+        if (trend.length > 180) trend.shift();
+      }
+    }
+
+    function colorForCluster(size) {
+      if (size <= 1) return palette.free;
+      if (size <= 4) return palette.small;
+      if (size <= 12) return palette.medium;
+      return palette.large;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+
+      const m = stats.model || modelTerms(values());
+      for (const p of particles) {
+        const clusterSize = stats.clusterSizeByParticle[p.id] || 1;
+        if (clusterSize === 1) {
+          ctx.beginPath();
+          ctx.fillStyle = palette.halo;
+          ctx.arc(p.x, p.y, p.r + m.debyePx, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.lineCap = "round";
+      bonds.forEach((bond) => {
+        const a = particles[bond.a];
+        const b = particles[bond.b];
+        if (!a || !b) return;
+        ctx.beginPath();
+        ctx.strokeStyle = palette.bond;
+        ctx.lineWidth = 1.4 + Math.min(3.2, bond.strength);
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      });
+
+      for (const p of particles) {
+        const clusterSize = stats.clusterSizeByParticle[p.id] || 1;
+        const color = colorForCluster(clusterSize);
+        const scale = 1 + Math.min(0.38, Math.log(clusterSize) * 0.055);
+
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.arc(p.x, p.y, p.r * scale, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.92)";
+        ctx.lineWidth = 1.2;
+        ctx.arc(p.x - p.r * 0.22, p.y - p.r * 0.22, p.r * scale * 0.72, Math.PI * 1.1, Math.PI * 1.75);
+        ctx.stroke();
+
+        if (clusterSize > 8) {
+          ctx.beginPath();
+          ctx.strokeStyle = "rgba(228, 87, 87, 0.26)";
+          ctx.lineWidth = 2;
+          ctx.arc(p.x, p.y, p.r * scale + 3, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+    }
+
+    function drawTrend() {
+      const rect = trendCanvas.getBoundingClientRect();
+      const w = Math.max(280, rect.width);
+      const h = Math.max(80, rect.height);
+      trendCtx.clearRect(0, 0, w, h);
+      trendCtx.fillStyle = "#ffffff";
+      trendCtx.fillRect(0, 0, w, h);
+      trendCtx.strokeStyle = "#e4ece8";
+      trendCtx.lineWidth = 1;
+
+      for (let i = 0; i < 4; i += 1) {
+        const y = 8 + (i * (h - 18)) / 3;
+        trendCtx.beginPath();
+        trendCtx.moveTo(0, y);
+        trendCtx.lineTo(w, y);
+        trendCtx.stroke();
+      }
+
+      if (trend.length < 2) return;
+
+      const maxLargest = Math.max(2, ...trend.map((d) => d.largest));
+      const drawLine = (key, color, normalizer) => {
+        trendCtx.beginPath();
+        trendCtx.strokeStyle = color;
+        trendCtx.lineWidth = 2;
+        trend.forEach((d, i) => {
+          const x = (i / Math.max(1, trend.length - 1)) * (w - 8) + 4;
+          const y = h - 8 - normalizer(d[key]) * (h - 18);
+          if (i === 0) trendCtx.moveTo(x, y);
+          else trendCtx.lineTo(x, y);
+        });
+        trendCtx.stroke();
+      };
+
+      drawLine("stability", "#008f8a", (n) => n / 100);
+      drawLine("largest", "#e45757", (n) => n / maxLargest);
+
+      trendCtx.fillStyle = "#66736e";
+      trendCtx.font = "11px Segoe UI, sans-serif";
+      trendCtx.fillText("绿色: 稳定性", 8, 14);
+      trendCtx.fillText("红色: 最大团簇", 8, 29);
+    }
+
+    function updateReadouts() {
+      const m = stats.model || modelTerms(values());
+      readouts.timeText.textContent = `${simTime.toFixed(1)} s`;
+      readouts.debyeText.textContent = `${m.debyeNm.toFixed(1)} nm`;
+      readouts.collisionText.textContent = collisions.toLocaleString("zh-CN");
+      readouts.stabilityText.textContent = `${Math.round(stats.stability)}`;
+      readouts.stabilityMeter.style.width = `${stats.stability}%`;
+      readouts.largestText.textContent = stats.largest.toString();
+      readouts.averageText.textContent = stats.average.toFixed(2);
+      readouts.freeText.textContent = `${Math.round(stats.freeFraction * 100)}%`;
+      readouts.rateText.textContent = `${stats.rate.toFixed(2)}/s`;
+      readouts.barrierText.textContent = `${m.barrier.toFixed(2)} kT`;
+      readouts.stickText.textContent = `${(m.stickProbability * 100).toFixed(1)}%`;
+      readouts.pzcText.textContent = m.pzcProximity.toFixed(2);
+      readouts.breakText.textContent = `${(m.breakProbability * 100).toFixed(2)}%`;
+
+      let state = "稳定分散";
+      let unstable = false;
+      if (stats.stability < 35 || stats.largest > particles.length * 0.22) {
+        state = "快速聚集";
+        unstable = true;
+      } else if (stats.stability < 62 || stats.largest > particles.length * 0.08) {
+        state = "亚稳絮凝";
+        unstable = true;
+      }
+      readouts.stateText.textContent = state;
+      readouts.stateDot.classList.toggle("unstable", unstable);
+    }
+
+    function animate(now) {
+      const rawDt = Math.min(0.035, (now - lastFrame) / 1000 || 0.016);
+      lastFrame = now;
+      if (running) {
+        stepSimulation(rawDt);
+        draw();
+        drawTrend();
+        updateReadouts();
+      }
+      requestAnimationFrame(animate);
+    }
+
+    function shake() {
+      const strength = 1.4 + values().shear * 0.75;
+      particles.forEach((p) => {
+        p.vx += rand(-strength, strength);
+        p.vy += rand(-strength, strength);
+      });
+      draw();
+    }
+
+    function singleStep() {
+      stepSimulation(1 / 30);
+      draw();
+      drawTrend();
+      updateReadouts();
+    }
+
+    Object.values(controls).forEach((control) => {
+      control.addEventListener("input", () => {
+        updateLabels();
+        activePreset = "";
+        document.querySelectorAll(".preset").forEach((button) => button.classList.remove("active"));
+      });
+    });
+
+    ["ionic", "zeta", "attraction", "ph", "temperature", "shear"].forEach((name) => {
+      controls[name].addEventListener("input", () => {
+        stats = computeStats();
+        updateReadouts();
+      });
+    });
+
+    document.getElementById("presetGrid").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-preset]");
+      if (!button) return;
+      applyPreset(button.dataset.preset);
+    });
+
+    readouts.playBtn.addEventListener("click", () => {
+      running = !running;
+      readouts.playBtn.textContent = running ? "暂停" : "继续";
+      readouts.playBtn.classList.toggle("primary", running);
+    });
+
+    document.getElementById("stepBtn").addEventListener("click", () => {
+      if (running) {
+        running = false;
+        readouts.playBtn.textContent = "继续";
+        readouts.playBtn.classList.remove("primary");
+      }
+      singleStep();
+    });
+
+    document.getElementById("shakeBtn").addEventListener("click", shake);
+    document.getElementById("resetBtn").addEventListener("click", resetSimulation);
+
+    canvas.addEventListener("pointerdown", (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      particles.forEach((p) => {
+        const dx = p.x - x;
+        const dy = p.y - y;
+        const d = Math.hypot(dx, dy) || 1;
+        if (d < 140) {
+          const push = (1 - d / 140) * 3.8;
+          p.vx += (dx / d) * push;
+          p.vy += (dy / d) * push;
+        }
+      });
+    });
+
+    window.addEventListener("resize", resize);
+
+    updateLabels();
+    resize();
+    resetSimulation();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
